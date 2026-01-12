@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammar Adventure</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 載入 Babel 用於解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        /* 增加一些可愛的字型設定，如果有需要的話 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 圖示組件 (SVG) ---
+        // 為了不依賴 npm 套件，我們直接將 Lucide icon 轉為 SVG component
+        const IconBase = ({ d, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {d}
+            </svg>
+        );
+
+        const BookOpen = (props) => <IconBase {...props} d={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />;
+        const CheckCircle = (props) => <IconBase {...props} d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />;
+        const ArrowRight = (props) => <IconBase {...props} d={<><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></>} />;
+        const Home = (props) => <IconBase {...props} d={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>} />;
+        const Star = (props) => <IconBase {...props} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>} />;
+        const RefreshCw = (props) => <IconBase {...props} d={<><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>} />;
+        
+        // --- 資料結構 ---
+        const grammarData = {
+            present: {
+                title: "現在簡單式 (Present Simple)",
+                icon: "☀️",
+                color: "bg-yellow-100",
+                borderColor: "border-yellow-400",
+                btnColor: "bg-yellow-400 hover:bg-yellow-500",
+                textColor: "text-yellow-800",
+                rules: [
+                    { title: "使用時機", content: "事實、習慣、普遍真理，或預定的行程。", example: "I walk to work. (我走路去上班)" },
+                    { title: "He / She / It 的秘密", content: "當主詞是第三人稱單數 (He, She, It) 時，動詞字尾要加 -s 或 -es 喔！", example: "She walks to work. (她走路去上班)" },
+                    { title: "否定句怎麼變？", content: "I/You/We/They 用 'do not (don't)'。\nHe/She/It 用 'does not (doesn't)'。", example: "We don't walk. / He doesn't walk." }
+                ],
+                questions: [
+                    { q: "I __________ (not / drink) coffee in the morning.", a: "do not drink", alt: ["don't drink"] },
+                    { q: "She __________ (play) the piano beautifully.", a: "plays" },
+                    { q: "They __________ (not / live) in London anymore.", a: "do not live", alt: ["don't live"] },
+                    { q: "It __________ (rain) a lot during the winter here.", a: "rains" },
+                    { q: "You __________ (always / forget) your keys on the table.", a: "always forget" },
+                    { q: "He __________ (not / like) spicy food.", a: "does not like", alt: ["doesn't like"] },
+                    { q: "We __________ (study) English every Tuesday.", a: "study" }
+                ]
+            },
+            past: {
+                title: "過去簡單式 (Past Simple)",
+                icon: "🕰️",
+                color: "bg-blue-100",
+                borderColor: "border-blue-400",
+                btnColor: "bg-blue-400 hover:bg-blue-500",
+                textColor: "text-blue-800",
+                rules: [
+                    { title: "使用時機", content: "在過去特定時間點開始並已完成的動作。", example: "They cooked dinner. (他們煮了晚餐)" },
+                    { title: "否定句的小陷阱", content: "否定句使用 did not (didn't) + 原形動詞！千萬不要加 ed 喔！", example: "It did not cook dinner. (它沒煮晚餐 - 正確)\nIt did not cooked... (錯誤 ❌)" }
+                ],
+                questions: [
+                    { q: "I __________ (see) a movie last night.", a: "saw" },
+                    { q: "You __________ (not / call) me yesterday.", a: "did not call", alt: ["didn't call"] },
+                    { q: "He __________ (buy) a new car last week.", a: "bought" },
+                    { q: "They __________ (not / finish) their homework on time.", a: "did not finish", alt: ["didn't finish"] },
+                    { q: "It __________ (be) very cold two days ago.", a: "was" },
+                    { q: "We __________ (not / go) to the beach because of the rain.", a: "did not go", alt: ["didn't go"] },
+                    { q: "She __________ (tell) me a secret this morning.", a: "told" }
+                ]
+            },
+            future: {
+                title: "未來簡單式 (Future Simple)",
+                icon: "🚀",
+                color: "bg-green-100",
+                borderColor: "border-green-400",
+                btnColor: "bg-green-400 hover:bg-green-500",
+                textColor: "text-green-800",
+                rules: [
+                    { title: "使用時機", content: "承諾、預測，或是說話當下所做的決定。", example: "I will travel soon. (我很快就會去旅行)" },
+                    { title: "否定句與縮寫", content: "will not 可以縮寫成 won't。", example: "They will not (won't) travel." }
+                ],
+                questions: [
+                    { q: "I promise I __________ (help) you with your project tomorrow.", a: "will help" },
+                    { q: "They __________ (not / arrive) before 8:00 PM.", a: "will not arrive", alt: ["won't arrive"] },
+                    { q: "It __________ (be) a sunny day on Sunday.", a: "will be" },
+                    { q: "You __________ (not / regret) this decision.", a: "will not regret", alt: ["won't regret"] },
+                    { q: "We __________ (travel) to Japan next summer.", a: "will travel" },
+                    { q: "He __________ (not / join) us for dinner tonight.", a: "will not join", alt: ["won't join"] },
+                    { q: "She __________ (be) a great doctor one day.", a: "will be" }
+                ]
+            },
+            mixed: {
+                title: "混合時態挑戰 (Mixed Challenge)",
+                icon: "🏆",
+                color: "bg-purple-100",
+                borderColor: "border-purple-400",
+                btnColor: "bg-purple-400 hover:bg-purple-500",
+                textColor: "text-purple-800",
+                rules: [
+                    { title: "大魔王關卡", content: "這裡混合了所有時態！請仔細看時間關鍵字 (Time Markers)。", example: "yesterday (過去), always (現在習慣), next year (未來)" }
+                ],
+                questions: [
+                    { q: "Last year, I __________ (travel) to France.", a: "traveled", alt: ["travelled"] },
+                    { q: "Every morning, he __________ (eat) breakfast at 7 AM.", a: "eats" },
+                    { q: "I think it __________ (snow) tomorrow.", a: "will snow" },
+                    { q: "We __________ (not / see) that movie yet, but we saw the trailer yesterday.", a: "have not seen", alt: ["haven't seen", "did not see", "didn't see"] },
+                    { q: "They __________ (not / play) football every weekend; they prefer tennis.", a: "do not play", alt: ["don't play"] },
+                    { q: "She __________ (not / come) to the party last night.", a: "did not come", alt: ["didn't come"] }
+                ]
+            }
+        };
+
+        // --- 元件 ---
+
+        const CartoonCard = ({ children, color, borderColor, className = "" }) => (
+            <div className={`${color} border-4 ${borderColor} rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,0.15)] p-6 transition-transform hover:-translate-y-1 ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Button = ({ onClick, children, colorClass, className = "" }) => (
+            <button
+                onClick={onClick}
+                className={`${colorClass} text-white font-bold py-3 px-6 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${className}`}
+            >
+                {children}
+            </button>
+        );
+
+        const FeedbackModal = ({ isCorrect, correctAnswer, onNext }) => (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className={`bg-white rounded-3xl p-8 max-w-sm w-full text-center border-b-8 ${isCorrect ? 'border-green-500' : 'border-red-500'} shadow-2xl scale-100 animate-in zoom-in-95 duration-200`}>
+                    <div className="text-6xl mb-4 animate-bounce">
+                        {isCorrect ? '🎉' : '🤔'}
+                    </div>
+                    <h3 className={`text-2xl font-black mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                        {isCorrect ? '答對了！ Awesome!' : '差一點點！'}
+                    </h3>
+                    {!isCorrect && (
+                        <div className="mb-6 bg-red-50 p-4 rounded-xl text-left">
+                            <p className="text-sm text-gray-500 font-bold mb-1">正確答案是：</p>
+                            <p className="text-xl font-bold text-red-600">{correctAnswer}</p>
+                        </div>
+                    )}
+                    <Button 
+                        onClick={onNext} 
+                        colorClass={isCorrect ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}
+                        className="w-full text-lg"
+                    >
+                        {isCorrect ? '下一題 Next!' : '我知道了 Got it!'}
+                    </Button>
+                </div>
+            </div>
+        );
+
+        // --- 主程式 ---
+
+        function App() {
+            const [currentSection, setCurrentSection] = useState(null); 
+            const [mode, setMode] = useState(null);
+            const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+            const [score, setScore] = useState(0);
+            const [userInput, setUserInput] = useState("");
+            const [showFeedback, setShowFeedback] = useState(false);
+            const [lastResult, setLastResult] = useState(null);
+            const [completed, setCompleted] = useState(false);
+
+            const handleSectionSelect = (sectionKey) => {
+                setCurrentSection(sectionKey);
+                setMode(null);
+                resetQuiz();
+            };
+
+            const resetQuiz = () => {
+                setCurrentQuestionIdx(0);
+                setScore(0);
+                setCompleted(false);
+                setUserInput("");
+                setShowFeedback(false);
+            };
+
+            const startQuiz = () => {
+                setMode('quiz');
+                resetQuiz();
+            };
+
+            const checkAnswer = () => {
+                if (!userInput.trim()) return;
+
+                const currentQ = grammarData[currentSection].questions[currentQuestionIdx];
+                const userClean = userInput.trim().toLowerCase();
+                const isCorrect = userClean === currentQ.a.toLowerCase() || (currentQ.alt && currentQ.alt.includes(userClean));
+
+                if (isCorrect) setScore(s => s + 1);
+
+                setLastResult({ correct: isCorrect, answer: currentQ.a });
+                setShowFeedback(true);
+            };
+
+            const nextQuestion = () => {
+                setShowFeedback(false);
+                setUserInput("");
+                
+                if (currentQuestionIdx < grammarData[currentSection].questions.length - 1) {
+                    setCurrentQuestionIdx(prev => prev + 1);
+                } else {
+                    setCompleted(true);
+                }
+            };
+
+            // --- 畫面渲染 ---
+
+            if (!currentSection) {
+                return (
+                    <div className="min-h-screen bg-orange-50 font-sans p-4 md:p-8">
+                        <div className="max-w-4xl mx-auto">
+                            <header className="text-center mb-12">
+                                <h1 className="text-4xl md:text-6xl font-black text-orange-600 mb-4 drop-shadow-md tracking-tight">
+                                    Grammar Adventure
+                                </h1>
+                                <p className="text-xl text-gray-600 font-medium">跟著我們一起征服英文時態！🚀</p>
+                            </header>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {Object.entries(grammarData).map(([key, data]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => handleSectionSelect(key)}
+                                        className={`group relative overflow-hidden ${data.color} border-4 ${data.borderColor} rounded-3xl p-6 text-left transition-all hover:scale-105 active:scale-95 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]`}
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <span className="text-5xl group-hover:animate-bounce">{data.icon}</span>
+                                            <ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                                        </div>
+                                        <h2 className={`text-2xl font-bold ${data.textColor} mb-2`}>{data.title}</h2>
+                                        <p className={`${data.textColor} opacity-80 font-medium`}>包含 {data.questions.length} 題練習</p>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <footer className="mt-16 text-center text-gray-400 font-medium">
+                                <p>Designed for fun learning! ✨</p>
+                            </footer>
+                        </div>
+                    </div>
+                );
+            }
+
+            const sectionData = grammarData[currentSection];
+
+            return (
+                <div className={`min-h-screen ${sectionData.color} font-sans p-4 md:p-8 transition-colors duration-500`}>
+                    <div className="max-w-3xl mx-auto">
+                        <div className="flex items-center justify-between mb-8 bg-white/60 backdrop-blur-sm p-4 rounded-2xl border-2 border-white/50">
+                            <button 
+                                onClick={() => setCurrentSection(null)}
+                                className="flex items-center gap-2 text-gray-600 font-bold hover:text-gray-900 transition-colors"
+                            >
+                                <Home className="w-5 h-5" /> 回首頁
+                            </button>
+                            <h2 className={`text-xl md:text-2xl font-black ${sectionData.textColor} text-center hidden md:block`}>
+                                {sectionData.title}
+                            </h2>
+                            <div className="w-24 text-right"></div>
+                        </div>
+
+                        {!mode && (
+                            <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-8 duration-500">
+                                <div className="text-center mb-4">
+                                    <span className="text-8xl block mb-4 animate-pulse">{sectionData.icon}</span>
+                                    <h2 className={`text-3xl font-black ${sectionData.textColor}`}>準備好開始了嗎？</h2>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50" >
+                                        <div onClick={() => setMode('learn')} className="h-full flex flex-col items-center justify-center text-center gap-4">
+                                            <BookOpen className={`w-16 h-16 ${sectionData.textColor}`} />
+                                            <div>
+                                                <h3 className="text-2xl font-bold text-gray-800">學習模式 (Learn)</h3>
+                                                <p className="text-gray-500">先複習一下規則與重點</p>
+                                            </div>
+                                        </div>
+                                    </CartoonCard>
+
+                                    <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
+                                        <div onClick={startQuiz} className="h-full flex flex-col items-center justify-center text-center gap-4">
+                                            <Star className={`w-16 h-16 ${sectionData.textColor}`} />
+                                            <div>
+                                                <h3 className="text-2xl font-bold text-gray-800">挑戰模式 (Quiz)</h3>
+                                                <p className="text-gray-500">測試你的實力！</p>
+                                            </div>
+                                        </div>
+                                    </CartoonCard>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'learn' && (
+                            <div className="space-y-6 animate-in fade-in duration-500">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="bg-white p-3 rounded-full shadow-md border-2 border-gray-100">
+                                        <span className="text-4xl">👨‍🏫</span>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-r-2xl rounded-bl-2xl shadow-sm border border-gray-100 flex-1 relative">
+                                        <div className="absolute top-0 left-0 -ml-2 mt-4 w-4 h-4 bg-white transform rotate-45 border-l border-b border-gray-100"></div>
+                                        <p className="text-gray-700 font-bold">這是這一課的重點筆記，記得要看清楚喔！</p>
+                                    </div>
+                                </div>
+
+                                {sectionData.rules.map((rule, idx) => (
+                                    <CartoonCard key={idx} color="bg-white" borderColor={sectionData.borderColor}>
+                                        <h3 className={`text-xl font-black ${sectionData.textColor} mb-3 flex items-center gap-2`}>
+                                            <span className="bg-gray-100 text-gray-800 w-8 h-8 rounded-full flex items-center justify-center text-sm">{idx + 1}</span>
+                                            {rule.title}
+                                        </h3>
+                                        <p className="text-gray-700 font-medium mb-4 leading-relaxed whitespace-pre-line">
+                                            {rule.content}
+                                        </p>
+                                        <div className="bg-gray-50 border-l-4 border-gray-300 p-3 italic text-gray-600 rounded-r-lg">
+                                            例句： {rule.example}
+                                        </div>
+                                    </CartoonCard>
+                                ))}
+
+                                <div className="pt-4 text-center">
+                                    <Button onClick={startQuiz} colorClass={sectionData.btnColor} className="w-full md:w-auto text-xl mx-auto">
+                                        看完了，開始測驗！ <ArrowRight size={24} />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'quiz' && !completed && (
+                            <div className="max-w-2xl mx-auto animate-in slide-in-from-right-8 duration-300">
+                                <div className="mb-8">
+                                    <div className="flex justify-between text-sm font-bold text-gray-500 mb-2">
+                                        <span>Question {currentQuestionIdx + 1} / {sectionData.questions.length}</span>
+                                        <span>Score: {score}</span>
+                                    </div>
+                                    <div className="h-4 bg-white/50 rounded-full overflow-hidden border border-white/60">
+                                        <div 
+                                            className={`h-full ${sectionData.btnColor.split(' ')[0]} transition-all duration-500`}
+                                            style={{ width: `${((currentQuestionIdx + 1) / sectionData.questions.length) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="py-12">
+                                    <div className="text-center mb-8">
+                                        <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold tracking-wider mb-4 uppercase">
+                                            Fill in the blank
+                                        </span>
+                                        <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-normal">
+                                            {sectionData.questions[currentQuestionIdx].q.split('__________').map((part, i, arr) => (
+                                                <React.Fragment key={i}>
+                                                    {part}
+                                                    {i < arr.length - 1 && (
+                                                        <span className="inline-block px-2">
+                                                            <input
+                                                                type="text"
+                                                                value={userInput}
+                                                                onChange={(e) => setUserInput(e.target.value)}
+                                                                onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                                                                className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg"
+                                                                placeholder="type here..."
+                                                                autoFocus
+                                                            />
+                                                        </span>
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                        </h3>
+                                    </div>
+
+                                    <div className="flex justify-center">
+                                        <Button 
+                                            onClick={checkAnswer} 
+                                            colorClass={sectionData.btnColor}
+                                            className="w-full md:w-2/3 text-lg"
+                                        >
+                                            Check Answer <CheckCircle size={24} />
+                                        </Button>
+                                    </div>
+                                </CartoonCard>
+                            </div>
+                        )}
+
+                        {completed && (
+                            <div className="text-center animate-in zoom-in-90 duration-500">
+                                <div className="mb-6 relative inline-block">
+                                    <span className="text-9xl animate-bounce block">
+                                        {score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}
+                                    </span>
+                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white px-4 py-1 rounded-full shadow-sm font-bold text-gray-600 whitespace-nowrap border-2 border-gray-100">
+                                        Score: {score} / {sectionData.questions.length}
+                                    </div>
+                                </div>
+
+                                <h2 className="text-4xl font-black text-gray-800 mb-4">
+                                    {score === sectionData.questions.length ? 'Perfect Score!' : 'Great Job!'}
+                                </h2>
+                                <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
+                                    {score === sectionData.questions.length 
+                                        ? "You're a grammar master! 老師為你感到驕傲！" 
+                                        : "練習造就完美！再試一次會更好喔！"}
+                                </p>
+
+                                <div className="flex flex-col md:flex-row gap-4 justify-center">
+                                    <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600">
+                                        <RefreshCw size={24} /> 再玩一次
+                                    </Button>
+                                    <Button onClick={() => setCurrentSection(null)} colorClass={sectionData.btnColor}>
+                                        <Home size={24} /> 回到大廳
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {showFeedback && (
+                            <FeedbackModal 
+                                isCorrect={lastResult.correct} 
+                                correctAnswer={lastResult.answer} 
+                                onNext={nextQuestion} 
+                            />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
