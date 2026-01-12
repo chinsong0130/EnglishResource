@@ -11,11 +11,20 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- 載入 Babel 用於解析 JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 載入 html2canvas 用於匯出圖片 -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     
     <style>
-        /* 增加一些可愛的字型設定，如果有需要的話 */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* 隱藏捲軸但保留功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
     </style>
 </head>
@@ -23,10 +32,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // --- 圖示組件 (SVG) ---
-        // 為了不依賴 npm 套件，我們直接將 Lucide icon 轉為 SVG component
         const IconBase = ({ d, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {d}
@@ -39,7 +47,10 @@
         const Home = (props) => <IconBase {...props} d={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>} />;
         const Star = (props) => <IconBase {...props} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>} />;
         const RefreshCw = (props) => <IconBase {...props} d={<><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>} />;
-        
+        const Download = (props) => <IconBase {...props} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>} />;
+        const User = (props) => <IconBase {...props} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />;
+        const Edit = (props) => <IconBase {...props} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />;
+
         // --- 資料結構 ---
         const grammarData = {
             present: {
@@ -48,6 +59,7 @@
                 color: "bg-yellow-100",
                 borderColor: "border-yellow-400",
                 btnColor: "bg-yellow-400 hover:bg-yellow-500",
+                progressColor: "bg-yellow-500",
                 textColor: "text-yellow-800",
                 rules: [
                     { title: "使用時機", content: "事實、習慣、普遍真理，或預定的行程。", example: "I walk to work. (我走路去上班)" },
@@ -70,6 +82,7 @@
                 color: "bg-blue-100",
                 borderColor: "border-blue-400",
                 btnColor: "bg-blue-400 hover:bg-blue-500",
+                progressColor: "bg-blue-500",
                 textColor: "text-blue-800",
                 rules: [
                     { title: "使用時機", content: "在過去特定時間點開始並已完成的動作。", example: "They cooked dinner. (他們煮了晚餐)" },
@@ -91,6 +104,7 @@
                 color: "bg-green-100",
                 borderColor: "border-green-400",
                 btnColor: "bg-green-400 hover:bg-green-500",
+                progressColor: "bg-green-500",
                 textColor: "text-green-800",
                 rules: [
                     { title: "使用時機", content: "承諾、預測，或是說話當下所做的決定。", example: "I will travel soon. (我很快就會去旅行)" },
@@ -112,6 +126,7 @@
                 color: "bg-purple-100",
                 borderColor: "border-purple-400",
                 btnColor: "bg-purple-400 hover:bg-purple-500",
+                progressColor: "bg-purple-500",
                 textColor: "text-purple-800",
                 rules: [
                     { title: "大魔王關卡", content: "這裡混合了所有時態！請仔細看時間關鍵字 (Time Markers)。", example: "yesterday (過去), always (現在習慣), next year (未來)" }
@@ -173,6 +188,15 @@
         // --- 主程式 ---
 
         function App() {
+            // 狀態管理
+            const [userName, setUserName] = useState("");
+            const [showNameModal, setShowNameModal] = useState(true);
+            const [sectionProgress, setSectionProgress] = useState({
+                present: 0,
+                past: 0,
+                future: 0,
+                mixed: 0
+            });
             const [currentSection, setCurrentSection] = useState(null); 
             const [mode, setMode] = useState(null);
             const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -181,13 +205,17 @@
             const [showFeedback, setShowFeedback] = useState(false);
             const [lastResult, setLastResult] = useState(null);
             const [completed, setCompleted] = useState(false);
+            const [isExporting, setIsExporting] = useState(false);
+            const reportRef = useRef(null);
 
+            // 處理開始測驗
             const handleSectionSelect = (sectionKey) => {
                 setCurrentSection(sectionKey);
                 setMode(null);
                 resetQuiz();
             };
 
+            // 重置測驗
             const resetQuiz = () => {
                 setCurrentQuestionIdx(0);
                 setScore(0);
@@ -196,11 +224,13 @@
                 setShowFeedback(false);
             };
 
+            // 開始 Quiz 模式
             const startQuiz = () => {
                 setMode('quiz');
                 resetQuiz();
             };
 
+            // 檢查答案
             const checkAnswer = () => {
                 if (!userInput.trim()) return;
 
@@ -214,6 +244,7 @@
                 setShowFeedback(true);
             };
 
+            // 下一題
             const nextQuestion = () => {
                 setShowFeedback(false);
                 setUserInput("");
@@ -221,12 +252,77 @@
                 if (currentQuestionIdx < grammarData[currentSection].questions.length - 1) {
                     setCurrentQuestionIdx(prev => prev + 1);
                 } else {
+                    // 測驗結束，更新進度
                     setCompleted(true);
+                    // 這裡先計算新分數
+                    const finalScore = lastResult.correct ? score + 1 : score;
+                    // 如果現在的分數比以前高，才更新紀錄
+                    setSectionProgress(prev => ({
+                        ...prev,
+                        [currentSection]: Math.max(prev[currentSection], finalScore)
+                    }));
                 }
             };
 
-            // --- 畫面渲染 ---
+            // 處理名字輸入
+            const handleNameSubmit = (e) => {
+                e.preventDefault();
+                if (userName.trim()) {
+                    setShowNameModal(false);
+                }
+            };
 
+            // 匯出圖片
+            const exportResult = async () => {
+                if (!reportRef.current) return;
+                setIsExporting(true);
+                
+                try {
+                    const canvas = await html2canvas(reportRef.current, {
+                        scale: 2, // 提高解析度
+                        backgroundColor: null,
+                    });
+                    
+                    const link = document.createElement('a');
+                    link.download = `Grammar_Adventure_${userName}_${currentSection}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                } catch (err) {
+                    console.error("Export failed:", err);
+                    alert("匯出圖片失敗，請重試或截圖保存！");
+                } finally {
+                    setIsExporting(false);
+                }
+            };
+
+            // --- 歡迎輸入名字視窗 ---
+            if (showNameModal) {
+                return (
+                    <div className="fixed inset-0 bg-orange-50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border-4 border-orange-200 text-center">
+                            <span className="text-6xl mb-4 block">👋</span>
+                            <h2 className="text-3xl font-black text-orange-600 mb-2">Welcome!</h2>
+                            <p className="text-gray-500 mb-6">歡迎來到 Grammar Adventure，請問你叫什麼名字？</p>
+                            <form onSubmit={handleNameSubmit}>
+                                <input
+                                    type="text"
+                                    value={userName}
+                                    onChange={(e) => setUserName(e.target.value)}
+                                    placeholder="Enter your name"
+                                    className="w-full text-center text-xl p-3 border-b-4 border-gray-300 focus:border-orange-500 outline-none bg-gray-50 rounded-t-lg mb-6 transition-colors"
+                                    autoFocus
+                                    required
+                                />
+                                <Button className="w-full text-lg" colorClass="bg-orange-500 hover:bg-orange-600">
+                                    開始冒險 Start!
+                                </Button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- 首頁 (Dashboard) ---
             if (!currentSection) {
                 return (
                     <div className="min-h-screen bg-orange-50 font-sans p-4 md:p-8">
@@ -235,24 +331,45 @@
                                 <h1 className="text-4xl md:text-6xl font-black text-orange-600 mb-4 drop-shadow-md tracking-tight">
                                     Grammar Adventure
                                 </h1>
-                                <p className="text-xl text-gray-600 font-medium">跟著我們一起征服英文時態！🚀</p>
+                                <p className="text-xl text-gray-600 font-medium">Hi, <span className="text-orange-600 font-bold border-b-2 border-orange-300">{userName}</span>! 準備好征服英文時態了嗎？🚀</p>
+                                <button onClick={() => setShowNameModal(true)} className="text-sm text-gray-400 mt-2 hover:text-orange-500 underline">
+                                    修改名字
+                                </button>
                             </header>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {Object.entries(grammarData).map(([key, data]) => (
-                                    <button
-                                        key={key}
-                                        onClick={() => handleSectionSelect(key)}
-                                        className={`group relative overflow-hidden ${data.color} border-4 ${data.borderColor} rounded-3xl p-6 text-left transition-all hover:scale-105 active:scale-95 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]`}
-                                    >
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className="text-5xl group-hover:animate-bounce">{data.icon}</span>
-                                            <ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                                        </div>
-                                        <h2 className={`text-2xl font-bold ${data.textColor} mb-2`}>{data.title}</h2>
-                                        <p className={`${data.textColor} opacity-80 font-medium`}>包含 {data.questions.length} 題練習</p>
-                                    </button>
-                                ))}
+                                {Object.entries(grammarData).map(([key, data]) => {
+                                    // 計算進度百分比
+                                    const progress = (sectionProgress[key] / data.questions.length) * 100;
+                                    
+                                    return (
+                                        <button
+                                            key={key}
+                                            onClick={() => handleSectionSelect(key)}
+                                            className={`group relative overflow-hidden ${data.color} border-4 ${data.borderColor} rounded-3xl p-6 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]`}
+                                        >
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="text-5xl group-hover:animate-bounce">{data.icon}</span>
+                                                <div className="text-right">
+                                                    <ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity inline-block`} />
+                                                </div>
+                                            </div>
+                                            <h2 className={`text-2xl font-bold ${data.textColor} mb-2`}>{data.title}</h2>
+                                            
+                                            {/* 進度條區域 */}
+                                            <div className="mt-4 bg-white/50 rounded-full h-3 overflow-hidden border border-white/30">
+                                                <div 
+                                                    className={`h-full ${data.progressColor} transition-all duration-1000 ease-out`}
+                                                    style={{ width: `${progress}%` }}
+                                                ></div>
+                                            </div>
+                                            <div className="flex justify-between mt-1">
+                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>最佳成績: {sectionProgress[key]}/{data.questions.length}</p>
+                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>{Math.round(progress)}% 完成</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
 
                             <footer className="mt-16 text-center text-gray-400 font-medium">
@@ -265,6 +382,7 @@
 
             const sectionData = grammarData[currentSection];
 
+            // --- 測驗頁面 ---
             return (
                 <div className={`min-h-screen ${sectionData.color} font-sans p-4 md:p-8 transition-colors duration-500`}>
                     <div className="max-w-3xl mx-auto">
@@ -278,7 +396,9 @@
                             <h2 className={`text-xl md:text-2xl font-black ${sectionData.textColor} text-center hidden md:block`}>
                                 {sectionData.title}
                             </h2>
-                            <div className="w-24 text-right"></div>
+                            <div className="w-24 text-right font-bold text-gray-500 flex items-center justify-end gap-2">
+                                <User size={16}/> {userName}
+                            </div>
                         </div>
 
                         {!mode && (
@@ -314,6 +434,7 @@
 
                         {mode === 'learn' && (
                             <div className="space-y-6 animate-in fade-in duration-500">
+                                {/* ... Learn Mode Code (Same as before) ... */}
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="bg-white p-3 rounded-full shadow-md border-2 border-gray-100">
                                         <span className="text-4xl">👨‍🏫</span>
@@ -403,31 +524,68 @@
                         )}
 
                         {completed && (
-                            <div className="text-center animate-in zoom-in-90 duration-500">
-                                <div className="mb-6 relative inline-block">
-                                    <span className="text-9xl animate-bounce block">
-                                        {score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}
-                                    </span>
-                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white px-4 py-1 rounded-full shadow-sm font-bold text-gray-600 whitespace-nowrap border-2 border-gray-100">
-                                        Score: {score} / {sectionData.questions.length}
+                            <div className="text-center animate-in zoom-in-90 duration-500 flex flex-col items-center">
+                                {/* 顯示可列印的成績單 (用於截圖，使用者可見) */}
+                                <div 
+                                    ref={reportRef}
+                                    className={`bg-white p-8 rounded-3xl shadow-xl border-8 ${sectionData.borderColor} max-w-sm w-full mb-8 relative overflow-hidden`}
+                                >
+                                    <div className={`absolute top-0 left-0 w-full h-4 ${sectionData.color}`}></div>
+                                    <div className="text-center mb-6">
+                                        <span className="text-6xl mb-2 block">
+                                            {score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}
+                                        </span>
+                                        <h3 className="text-2xl font-black text-gray-800 uppercase tracking-widest border-b-2 border-gray-100 pb-2">Certificate</h3>
+                                    </div>
+                                    
+                                    <div className="space-y-4 mb-8">
+                                        <div>
+                                            <p className="text-xs text-gray-400 uppercase font-bold">Student Name</p>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <h2 className="text-3xl font-handwriting font-bold text-gray-800">{userName}</h2>
+                                                {/* 讓使用者在最後還能改名字 */}
+                                                <button onClick={() => {
+                                                    const newName = prompt("Edit name:", userName);
+                                                    if (newName) setUserName(newName);
+                                                }} className="text-gray-300 hover:text-gray-500 print:hidden">
+                                                    <Edit size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 uppercase font-bold">Challenge</p>
+                                            <p className={`text-lg font-bold ${sectionData.textColor}`}>{sectionData.title}</p>
+                                        </div>
+                                        <div className="bg-gray-50 p-4 rounded-xl">
+                                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
+                                            <p className="text-4xl font-black text-gray-800">
+                                                {score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span>
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-400 uppercase font-bold">Date</p>
+                                            <p className="text-sm font-medium text-gray-600">{new Date().toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="text-xs text-gray-300 font-bold">
+                                        Grammar Adventure App
                                     </div>
                                 </div>
 
-                                <h2 className="text-4xl font-black text-gray-800 mb-4">
-                                    {score === sectionData.questions.length ? 'Perfect Score!' : 'Great Job!'}
-                                </h2>
-                                <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
-                                    {score === sectionData.questions.length 
-                                        ? "You're a grammar master! 老師為你感到驕傲！" 
-                                        : "練習造就完美！再試一次會更好喔！"}
-                                </p>
-
-                                <div className="flex flex-col md:flex-row gap-4 justify-center">
-                                    <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600">
-                                        <RefreshCw size={24} /> 再玩一次
+                                <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-md">
+                                    <Button 
+                                        onClick={exportResult} 
+                                        colorClass="bg-blue-500 hover:bg-blue-600"
+                                        className="flex-1"
+                                    >
+                                        {isExporting ? 'Generating...' : <><Download size={20} /> 下載成績單</>}
                                     </Button>
-                                    <Button onClick={() => setCurrentSection(null)} colorClass={sectionData.btnColor}>
-                                        <Home size={24} /> 回到大廳
+                                    <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600" className="flex-1">
+                                        <RefreshCw size={20} /> 再玩一次
+                                    </Button>
+                                    <Button onClick={() => setCurrentSection(null)} colorClass={sectionData.btnColor} className="flex-1">
+                                        <Home size={20} /> 回到大廳
                                     </Button>
                                 </div>
                             </div>
