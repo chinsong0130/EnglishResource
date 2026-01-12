@@ -4,28 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grammar Adventure</title>
-    <!-- 載入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 載入 React 和 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- 載入 Babel 用於解析 JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- 載入 html2canvas 用於匯出圖片 -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        /* 隱藏捲軸但保留功能 */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes slideDown {
             from { transform: translateY(-100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -38,25 +26,29 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 圖示組件 (SVG) ---
+        // --- Icons ---
         const IconBase = ({ d, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {d}
             </svg>
         );
+        const BookOpen = (p) => <IconBase {...p} d={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />;
+        const CheckCircle = (p) => <IconBase {...p} d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />;
+        const XCircle = (p) => <IconBase {...p} d={<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>} />;
+        const ArrowRight = (p) => <IconBase {...p} d={<><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></>} />;
+        const Home = (p) => <IconBase {...p} d={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>} />;
+        const Star = (p) => <IconBase {...p} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>} />;
+        const RefreshCw = (p) => <IconBase {...p} d={<><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>} />;
+        const Download = (p) => <IconBase {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>} />;
+        const User = (p) => <IconBase {...p} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />;
+        const Edit = (p) => <IconBase {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />;
+        const Bell = (p) => <IconBase {...p} d={<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>} />;
+        const Trash2 = (p) => <IconBase {...p} d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>} />;
+        const FileText = (p) => <IconBase {...p} d={<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>} />;
+        const LogOut = (p) => <IconBase {...p} d={<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>} />;
+        const RotateCcw = (p) => <IconBase {...p} d={<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>} />;
 
-        const BookOpen = (props) => <IconBase {...props} d={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />;
-        const CheckCircle = (props) => <IconBase {...props} d={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />;
-        const ArrowRight = (props) => <IconBase {...props} d={<><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></>} />;
-        const Home = (props) => <IconBase {...props} d={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>} />;
-        const Star = (props) => <IconBase {...props} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>} />;
-        const RefreshCw = (props) => <IconBase {...props} d={<><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>} />;
-        const Download = (props) => <IconBase {...props} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>} />;
-        const User = (props) => <IconBase {...props} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />;
-        const Edit = (props) => <IconBase {...props} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />;
-        const Bell = (props) => <IconBase {...props} d={<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>} />;
-
-        // --- 資料結構 ---
+        // --- Data ---
         const grammarData = {
             present: {
                 title: "現在簡單式 (Present Simple)",
@@ -147,8 +139,7 @@
             }
         };
 
-        // --- 元件 ---
-
+        // --- Helper Components ---
         const CartoonCard = ({ children, color, borderColor, className = "" }) => (
             <div className={`${color} border-4 ${borderColor} rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,0.15)] p-6 transition-transform hover:-translate-y-1 ${className}`}>
                 {children}
@@ -167,9 +158,7 @@
         const FeedbackModal = ({ isCorrect, correctAnswer, onNext }) => (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                 <div className={`bg-white rounded-3xl p-8 max-w-sm w-full text-center border-b-8 ${isCorrect ? 'border-green-500' : 'border-red-500'} shadow-2xl scale-100 animate-in zoom-in-95 duration-200`}>
-                    <div className="text-6xl mb-4 animate-bounce">
-                        {isCorrect ? '🎉' : '🤔'}
-                    </div>
+                    <div className="text-6xl mb-4 animate-bounce">{isCorrect ? '🎉' : '🤔'}</div>
                     <h3 className={`text-2xl font-black mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                         {isCorrect ? '答對了！ Awesome!' : '差一點點！'}
                     </h3>
@@ -179,64 +168,87 @@
                             <p className="text-xl font-bold text-red-600">{correctAnswer}</p>
                         </div>
                     )}
-                    <Button 
-                        onClick={onNext} 
-                        colorClass={isCorrect ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}
-                        className="w-full text-lg"
-                    >
+                    <Button onClick={onNext} colorClass={isCorrect ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} className="w-full text-lg">
                         {isCorrect ? '下一題 Next!' : '我知道了 Got it!'}
                     </Button>
                 </div>
             </div>
         );
 
-        // --- 主程式 ---
-
+        // --- Main App ---
         function App() {
-            // 狀態管理
+            // States
             const [userName, setUserName] = useState("");
             const [showNameModal, setShowNameModal] = useState(true);
-            const [sectionProgress, setSectionProgress] = useState({
-                present: 0,
-                past: 0,
-                future: 0,
-                mixed: 0
-            });
+            const [history, setHistory] = useState([]); // Array of record objects
             const [currentSection, setCurrentSection] = useState(null); 
             const [mode, setMode] = useState(null);
+            
+            // Quiz States
             const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
             const [score, setScore] = useState(0);
             const [userInput, setUserInput] = useState("");
             const [showFeedback, setShowFeedback] = useState(false);
             const [lastResult, setLastResult] = useState(null);
             const [completed, setCompleted] = useState(false);
+            
+            // Log for current session
+            const [quizLog, setQuizLog] = useState([]); // [{q, userAns, correctAns, isCorrect}]
+
+            const [notification, setNotification] = useState(null);
+            const [showReportModal, setShowReportModal] = useState(false);
             const [isExporting, setIsExporting] = useState(false);
-            const [notification, setNotification] = useState(null); // 新增：通知訊息狀態
+            
             const reportRef = useRef(null);
 
-            // 處理開始測驗
-            const handleSectionSelect = (sectionKey) => {
-                setCurrentSection(sectionKey);
-                setMode(null);
-                resetQuiz();
+            // Init: Load from localStorage
+            useEffect(() => {
+                const savedData = localStorage.getItem('grammar_adventure_data');
+                if (savedData) {
+                    const parsed = JSON.parse(savedData);
+                    // Handle legacy data or new data
+                    if (parsed.userName) {
+                        setUserName(parsed.userName);
+                        setShowNameModal(false);
+                    }
+                    if (parsed.history) {
+                        setHistory(parsed.history);
+                    }
+                }
+            }, []);
+
+            // Save to localStorage whenever critical data changes
+            useEffect(() => {
+                if (userName || history.length > 0) {
+                    const dataToSave = { userName, history };
+                    localStorage.setItem('grammar_adventure_data', JSON.stringify(dataToSave));
+                }
+            }, [userName, history]);
+
+            // Calculate progress for home screen (USER SPECIFIC)
+            const getProgress = (sectionKey) => {
+                if (!userName) return 0;
+                const sectionAttempts = history.filter(h => h.sectionKey === sectionKey && h.userName === userName);
+                if (sectionAttempts.length === 0) return 0;
+                // Find best score
+                const maxScore = Math.max(...sectionAttempts.map(h => h.score));
+                return maxScore;
             };
 
-            // 重置測驗
             const resetQuiz = () => {
                 setCurrentQuestionIdx(0);
                 setScore(0);
                 setCompleted(false);
                 setUserInput("");
                 setShowFeedback(false);
+                setQuizLog([]);
             };
 
-            // 開始 Quiz 模式
             const startQuiz = () => {
                 setMode('quiz');
                 resetQuiz();
             };
 
-            // 檢查答案
             const checkAnswer = () => {
                 if (!userInput.trim()) return;
 
@@ -244,13 +256,23 @@
                 const userClean = userInput.trim().toLowerCase();
                 const isCorrect = userClean === currentQ.a.toLowerCase() || (currentQ.alt && currentQ.alt.includes(userClean));
 
-                if (isCorrect) setScore(s => s + 1);
+                const newScore = isCorrect ? score + 1 : score;
+                if (isCorrect) setScore(newScore);
+
+                // Add to temporary log
+                const logEntry = {
+                    question: currentQ.q,
+                    userAnswer: userInput,
+                    correctAnswer: currentQ.a,
+                    isCorrect: isCorrect,
+                    questionId: currentQuestionIdx
+                };
+                setQuizLog(prev => [...prev, logEntry]);
 
                 setLastResult({ correct: isCorrect, answer: currentQ.a });
                 setShowFeedback(true);
             };
 
-            // 下一題
             const nextQuestion = () => {
                 setShowFeedback(false);
                 setUserInput("");
@@ -258,70 +280,97 @@
                 if (currentQuestionIdx < grammarData[currentSection].questions.length - 1) {
                     setCurrentQuestionIdx(prev => prev + 1);
                 } else {
-                    // 測驗結束
-                    setCompleted(true);
-                    // 修正：直接使用最新的 score 更新進度，避免重複計算
-                    setSectionProgress(prev => ({
-                        ...prev,
-                        [currentSection]: Math.max(prev[currentSection], score)
-                    }));
+                    finishQuiz();
                 }
             };
 
-            // 處理回到首頁 (包含下一關提醒)
+            const finishQuiz = () => {
+                setCompleted(true);
+                
+                const finalRecord = {
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    sectionKey: currentSection,
+                    userName: userName, // Store who took the test
+                    score: lastResult.correct ? score + 1 : score, 
+                    total: grammarData[currentSection].questions.length,
+                    details: quizLog 
+                };
+
+                // Add to history
+                setHistory(prev => [finalRecord, ...prev]);
+            };
+
             const handleGoHome = () => {
                 if (completed) {
-                    // 找出下一個關卡
                     const sections = Object.keys(grammarData);
                     const currentIndex = sections.indexOf(currentSection);
-                    
                     if (currentIndex < sections.length - 1) {
-                        const nextKey = sections[currentIndex + 1];
-                        const nextTitle = grammarData[nextKey].title;
+                        const nextTitle = grammarData[sections[currentIndex + 1]].title;
                         setNotification(`太棒了！接下來挑戰「${nextTitle}」吧！👉`);
                     } else {
                         setNotification("恭喜！你已經完成所有課程了！🎓");
                     }
-                    // 5秒後自動關閉通知
                     setTimeout(() => setNotification(null), 5000);
                 }
-                
                 setCurrentSection(null);
                 setMode(null);
             };
 
-            // 處理名字輸入
             const handleNameSubmit = (e) => {
                 e.preventDefault();
-                if (userName.trim()) {
-                    setShowNameModal(false);
+                if (userName.trim()) setShowNameModal(false);
+            };
+
+            const handleSwitchUser = () => {
+                // Clear current user session, but keep history
+                setUserName("");
+                setCurrentSection(null);
+                setShowNameModal(true);
+            };
+
+            const resetMyProgress = () => {
+                if(confirm(`確定要重置「${userName}」的所有學習進度嗎？(這不會影響其他使用者的紀錄)`)) {
+                    setHistory(prev => prev.filter(h => h.userName !== userName));
+                    alert("進度已重置！");
                 }
             };
 
-            // 匯出圖片
-            const exportResult = async () => {
+            const clearAllHistory = () => {
+                if(confirm("警告：這將會清除「所有使用者」的紀錄，確定嗎？")) {
+                    setHistory([]);
+                }
+            };
+
+            const exportReport = async () => {
                 if (!reportRef.current) return;
                 setIsExporting(true);
+                // Wait for render
+                await new Promise(r => setTimeout(r, 500));
                 
                 try {
                     const canvas = await html2canvas(reportRef.current, {
-                        scale: 2, // 提高解析度
-                        backgroundColor: null,
+                        scale: 1.5,
+                        backgroundColor: "#ffffff",
+                        logging: false
                     });
-                    
                     const link = document.createElement('a');
-                    link.download = `Grammar_Adventure_${userName}_${currentSection}.png`;
+                    link.download = `Grammar_Report_${userName}_${new Date().toISOString().slice(0,10)}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 } catch (err) {
-                    console.error("Export failed:", err);
-                    alert("匯出圖片失敗，請重試或截圖保存！");
+                    console.error(err);
+                    alert("匯出失敗，請重試");
                 } finally {
                     setIsExporting(false);
                 }
             };
 
-            // --- 歡迎輸入名字視窗 ---
+            // Filtered history for display
+            const userHistory = history.filter(h => h.userName === userName);
+
+            // --- Views ---
+
             if (showNameModal) {
                 return (
                     <div className="fixed inset-0 bg-orange-50 z-50 flex items-center justify-center p-4">
@@ -330,54 +379,138 @@
                             <h2 className="text-3xl font-black text-orange-600 mb-2">Welcome!</h2>
                             <p className="text-gray-500 mb-6">歡迎來到 Grammar Adventure，請問你叫什麼名字？</p>
                             <form onSubmit={handleNameSubmit}>
-                                <input
-                                    type="text"
-                                    value={userName}
-                                    onChange={(e) => setUserName(e.target.value)}
-                                    placeholder="Enter your name"
-                                    className="w-full text-center text-xl p-3 border-b-4 border-gray-300 focus:border-orange-500 outline-none bg-gray-50 rounded-t-lg mb-6 transition-colors"
-                                    autoFocus
-                                    required
-                                />
-                                <Button className="w-full text-lg" colorClass="bg-orange-500 hover:bg-orange-600">
-                                    開始冒險 Start!
-                                </Button>
+                                <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Enter your name" className="w-full text-center text-xl p-3 border-b-4 border-gray-300 focus:border-orange-500 outline-none bg-gray-50 rounded-t-lg mb-6 transition-colors" autoFocus required />
+                                <Button className="w-full text-lg" colorClass="bg-orange-500 hover:bg-orange-600">開始冒險 Start!</Button>
                             </form>
+                            {/* If there is history, maybe show existing users? Simplified for now */}
                         </div>
                     </div>
                 );
             }
 
-            // --- 首頁 (Dashboard) ---
+            // Report Modal
+            if (showReportModal) {
+                return (
+                    <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto p-4 md:p-8">
+                        <div className="max-w-4xl mx-auto bg-white rounded-3xl overflow-hidden shadow-2xl">
+                            {/* Toolbar */}
+                            <div className="bg-gray-100 p-4 flex justify-between items-center border-b sticky top-0 z-10">
+                                <h2 className="text-xl font-bold flex items-center gap-2"><FileText /> 學習歷程檔案 ({userName})</h2>
+                                <div className="flex gap-2">
+                                    <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                                        {isExporting ? 'Generating...' : <><Download size={18}/> 下載圖片</>}
+                                    </button>
+                                    <button onClick={() => setShowReportModal(false)} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-400">關閉</button>
+                                </div>
+                            </div>
+
+                            {/* Report Content to be captured */}
+                            <div ref={reportRef} className="p-8 bg-white min-h-[600px]">
+                                <div className="text-center mb-8 border-b-2 border-orange-100 pb-6">
+                                    <h1 className="text-4xl font-black text-orange-600 mb-2">Grammar Adventure Report</h1>
+                                    <div className="flex justify-center gap-6 text-gray-600 font-medium">
+                                        <p>Student: <span className="text-black font-bold text-xl">{userName}</span></p>
+                                        <p>Date: {new Date().toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+
+                                {userHistory.length === 0 ? (
+                                    <div className="text-center text-gray-400 py-12">目前還沒有測驗紀錄喔！快去挑戰吧！</div>
+                                ) : (
+                                    <div className="space-y-8">
+                                        {userHistory.map((record, idx) => (
+                                            <div key={record.id} className="border-2 border-gray-100 rounded-2xl overflow-hidden break-inside-avoid">
+                                                <div className={`p-4 flex justify-between items-center ${grammarData[record.sectionKey]?.color || 'bg-gray-100'}`}>
+                                                    <div>
+                                                        <h3 className="font-bold text-lg text-gray-800">{grammarData[record.sectionKey]?.title}</h3>
+                                                        <p className="text-xs opacity-70">{new Date(record.timestamp).toLocaleString()}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-2xl font-black">{record.score}</span>
+                                                        <span className="text-sm font-medium opacity-60"> / {record.total}</span>
+                                                    </div>
+                                                </div>
+                                                {/* Detailed QA */}
+                                                <div className="p-4 bg-white">
+                                                    <table className="w-full text-left text-sm">
+                                                        <thead>
+                                                            <tr className="border-b text-gray-400">
+                                                                <th className="pb-2 w-8">#</th>
+                                                                <th className="pb-2">Question</th>
+                                                                <th className="pb-2 w-32">Your Answer</th>
+                                                                <th className="pb-2 w-32">Correct</th>
+                                                                <th className="pb-2 w-8"></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y">
+                                                            {record.details && record.details.map((detail, i) => (
+                                                                <tr key={i} className={detail.isCorrect ? 'bg-green-50/30' : 'bg-red-50/30'}>
+                                                                    <td className="py-2 text-gray-500">{i + 1}</td>
+                                                                    <td className="py-2 font-medium text-gray-800">
+                                                                        {detail.question.split('__________').map((part, pi) => (
+                                                                            <span key={pi}>
+                                                                                {part}
+                                                                                {pi === 0 && <span className="underline decoration-dotted decoration-gray-400 mx-1 text-gray-400">____</span>}
+                                                                            </span>
+                                                                        ))}
+                                                                    </td>
+                                                                    <td className={`py-2 font-bold ${detail.isCorrect ? 'text-green-600' : 'text-red-500'}`}>
+                                                                        {detail.userAnswer}
+                                                                    </td>
+                                                                    <td className="py-2 text-gray-500">{!detail.isCorrect && detail.correctAnswer}</td>
+                                                                    <td className="py-2">
+                                                                        {detail.isCorrect ? <CheckCircle className="text-green-500 w-5 h-5"/> : <XCircle className="text-red-400 w-5 h-5"/>}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="mt-8 text-center text-xs text-gray-300">
+                                    Generated by Grammar Adventure App
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Dashboard
             if (!currentSection) {
                 return (
                     <div className="min-h-screen bg-orange-50 font-sans p-4 md:p-8 relative">
-                        {/* 提醒通知 Banner */}
                         {notification && (
                             <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2 animate-[slideDown_0.5s_ease-out]">
                                 <Bell className="w-5 h-5" />
                                 <span className="font-bold">{notification}</span>
-                                <button onClick={() => setNotification(null)} className="ml-2 hover:bg-green-600 rounded-full p-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
+                                <button onClick={() => setNotification(null)} className="ml-2 hover:bg-green-600 rounded-full p-1">X</button>
                             </div>
                         )}
 
                         <div className="max-w-4xl mx-auto">
-                            <header className="text-center mb-12">
-                                <h1 className="text-4xl md:text-6xl font-black text-orange-600 mb-4 drop-shadow-md tracking-tight">
-                                    Grammar Adventure
-                                </h1>
-                                <p className="text-xl text-gray-600 font-medium">Hi, <span className="text-orange-600 font-bold border-b-2 border-orange-300">{userName}</span>! 準備好征服英文時態了嗎？🚀</p>
-                                <button onClick={() => setShowNameModal(true)} className="text-sm text-gray-400 mt-2 hover:text-orange-500 underline">
-                                    修改名字
+                            <header className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
+                                <div className="text-center md:text-left">
+                                    <h1 className="text-4xl md:text-5xl font-black text-orange-600 mb-2 drop-shadow-md tracking-tight">
+                                        Grammar Adventure
+                                    </h1>
+                                    <p className="text-lg text-gray-600 font-medium">Hi, <span className="text-orange-600 font-bold border-b-2 border-orange-300">{userName}</span>! 準備好征服英文時態了嗎？🚀</p>
+                                </div>
+                                <button 
+                                    onClick={handleSwitchUser}
+                                    className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border-2 border-orange-100 text-orange-600 font-bold hover:bg-orange-50 transition-colors text-sm"
+                                >
+                                    <LogOut size={16}/> 登出 / 更換使用者
                                 </button>
                             </header>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                                 {Object.entries(grammarData).map(([key, data]) => {
-                                    // 計算進度百分比
-                                    const progress = (sectionProgress[key] / data.questions.length) * 100;
+                                    const bestScore = getProgress(key);
+                                    const progress = (bestScore / data.questions.length) * 100;
                                     
                                     return (
                                         <button
@@ -387,21 +520,14 @@
                                         >
                                             <div className="flex justify-between items-start mb-4">
                                                 <span className="text-5xl group-hover:animate-bounce">{data.icon}</span>
-                                                <div className="text-right">
-                                                    <ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity inline-block`} />
-                                                </div>
+                                                <div className="text-right"><ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity inline-block`} /></div>
                                             </div>
                                             <h2 className={`text-2xl font-bold ${data.textColor} mb-2`}>{data.title}</h2>
-                                            
-                                            {/* 進度條區域 */}
                                             <div className="mt-4 bg-white/50 rounded-full h-3 overflow-hidden border border-white/30">
-                                                <div 
-                                                    className={`h-full ${data.progressColor} transition-all duration-1000 ease-out`}
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
+                                                <div className={`h-full ${data.progressColor} transition-all duration-1000 ease-out`} style={{ width: `${progress}%` }}></div>
                                             </div>
                                             <div className="flex justify-between mt-1">
-                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>最佳成績: {sectionProgress[key]}/{data.questions.length}</p>
+                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>最佳成績: {bestScore}/{data.questions.length}</p>
                                                 <p className={`${data.textColor} text-xs font-bold opacity-70`}>{Math.round(progress)}% 完成</p>
                                             </div>
                                         </button>
@@ -409,9 +535,36 @@
                                 })}
                             </div>
 
-                            <footer className="mt-16 text-center text-gray-400 font-medium">
-                                <p>Designed for fun learning! ✨</p>
-                            </footer>
+                            {/* Records Section */}
+                            <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-orange-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-gray-700 flex items-center gap-2">
+                                        <Star className="text-yellow-400"/> 我的學習歷程 (My Records)
+                                    </h3>
+                                    {/* Admin/Debug: Clear ALL history */}
+                                    {history.length > 0 && (
+                                        <button onClick={clearAllHistory} title="清除所有使用者的紀錄" className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+                                    )}
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-4 items-center bg-orange-50 p-6 rounded-2xl">
+                                    <div className="flex-1">
+                                        <p className="text-gray-600 mb-1">{userName} 已完成 <strong className="text-orange-600">{userHistory.length}</strong> 次測驗</p>
+                                        <p className="text-xs text-gray-400">所有的答題紀錄都保存在這裡。</p>
+                                    </div>
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        {userHistory.length > 0 && (
+                                            <Button onClick={resetMyProgress} colorClass="bg-red-400 hover:bg-red-500" className="flex-1 sm:flex-none text-sm px-4">
+                                                <RotateCcw size={18}/> 重置我的進度
+                                            </Button>
+                                        )}
+                                        <Button onClick={() => setShowReportModal(true)} colorClass="bg-gray-800 hover:bg-black" className="flex-1 sm:flex-none text-sm px-4">
+                                            <FileText size={18}/> 查看與下載成績單
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <footer className="mt-16 text-center text-gray-400 font-medium pb-8"><p>Designed for fun learning! ✨</p></footer>
                         </div>
                     </div>
                 );
@@ -419,23 +572,16 @@
 
             const sectionData = grammarData[currentSection];
 
-            // --- 測驗頁面 ---
+            // Quiz View
             return (
                 <div className={`min-h-screen ${sectionData.color} font-sans p-4 md:p-8 transition-colors duration-500`}>
                     <div className="max-w-3xl mx-auto">
                         <div className="flex items-center justify-between mb-8 bg-white/60 backdrop-blur-sm p-4 rounded-2xl border-2 border-white/50">
-                            <button 
-                                onClick={handleGoHome}
-                                className="flex items-center gap-2 text-gray-600 font-bold hover:text-gray-900 transition-colors"
-                            >
+                            <button onClick={handleGoHome} className="flex items-center gap-2 text-gray-600 font-bold hover:text-gray-900 transition-colors">
                                 <Home className="w-5 h-5" /> 回首頁
                             </button>
-                            <h2 className={`text-xl md:text-2xl font-black ${sectionData.textColor} text-center hidden md:block`}>
-                                {sectionData.title}
-                            </h2>
-                            <div className="w-24 text-right font-bold text-gray-500 flex items-center justify-end gap-2">
-                                <User size={16}/> {userName}
-                            </div>
+                            <h2 className={`text-xl md:text-2xl font-black ${sectionData.textColor} text-center hidden md:block`}>{sectionData.title}</h2>
+                            <div className="w-24 text-right font-bold text-gray-500 flex items-center justify-end gap-2"><User size={16}/> {userName}</div>
                         </div>
 
                         {!mode && (
@@ -444,25 +590,17 @@
                                     <span className="text-8xl block mb-4 animate-pulse">{sectionData.icon}</span>
                                     <h2 className={`text-3xl font-black ${sectionData.textColor}`}>準備好開始了嗎？</h2>
                                 </div>
-                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50" >
+                                    <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
                                         <div onClick={() => setMode('learn')} className="h-full flex flex-col items-center justify-center text-center gap-4">
                                             <BookOpen className={`w-16 h-16 ${sectionData.textColor}`} />
-                                            <div>
-                                                <h3 className="text-2xl font-bold text-gray-800">學習模式 (Learn)</h3>
-                                                <p className="text-gray-500">先複習一下規則與重點</p>
-                                            </div>
+                                            <div><h3 className="text-2xl font-bold text-gray-800">學習模式</h3><p className="text-gray-500">複習重點</p></div>
                                         </div>
                                     </CartoonCard>
-
                                     <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
                                         <div onClick={startQuiz} className="h-full flex flex-col items-center justify-center text-center gap-4">
                                             <Star className={`w-16 h-16 ${sectionData.textColor}`} />
-                                            <div>
-                                                <h3 className="text-2xl font-bold text-gray-800">挑戰模式 (Quiz)</h3>
-                                                <p className="text-gray-500">測試你的實力！</p>
-                                            </div>
+                                            <div><h3 className="text-2xl font-bold text-gray-800">挑戰模式</h3><p className="text-gray-500">開始測驗</p></div>
                                         </div>
                                     </CartoonCard>
                                 </div>
@@ -471,36 +609,18 @@
 
                         {mode === 'learn' && (
                             <div className="space-y-6 animate-in fade-in duration-500">
-                                {/* ... Learn Mode Code ... */}
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="bg-white p-3 rounded-full shadow-md border-2 border-gray-100">
-                                        <span className="text-4xl">👨‍🏫</span>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-r-2xl rounded-bl-2xl shadow-sm border border-gray-100 flex-1 relative">
-                                        <div className="absolute top-0 left-0 -ml-2 mt-4 w-4 h-4 bg-white transform rotate-45 border-l border-b border-gray-100"></div>
-                                        <p className="text-gray-700 font-bold">這是這一課的重點筆記，記得要看清楚喔！</p>
-                                    </div>
-                                </div>
-
                                 {sectionData.rules.map((rule, idx) => (
                                     <CartoonCard key={idx} color="bg-white" borderColor={sectionData.borderColor}>
                                         <h3 className={`text-xl font-black ${sectionData.textColor} mb-3 flex items-center gap-2`}>
                                             <span className="bg-gray-100 text-gray-800 w-8 h-8 rounded-full flex items-center justify-center text-sm">{idx + 1}</span>
                                             {rule.title}
                                         </h3>
-                                        <p className="text-gray-700 font-medium mb-4 leading-relaxed whitespace-pre-line">
-                                            {rule.content}
-                                        </p>
-                                        <div className="bg-gray-50 border-l-4 border-gray-300 p-3 italic text-gray-600 rounded-r-lg">
-                                            例句： {rule.example}
-                                        </div>
+                                        <p className="text-gray-700 font-medium mb-4 leading-relaxed whitespace-pre-line">{rule.content}</p>
+                                        <div className="bg-gray-50 border-l-4 border-gray-300 p-3 italic text-gray-600 rounded-r-lg">例句： {rule.example}</div>
                                     </CartoonCard>
                                 ))}
-
                                 <div className="pt-4 text-center">
-                                    <Button onClick={startQuiz} colorClass={sectionData.btnColor} className="w-full md:w-auto text-xl mx-auto">
-                                        看完了，開始測驗！ <ArrowRight size={24} />
-                                    </Button>
+                                    <Button onClick={startQuiz} colorClass={sectionData.btnColor} className="w-full md:w-auto text-xl mx-auto">開始測驗！ <ArrowRight size={24} /></Button>
                                 </div>
                             </div>
                         )}
@@ -513,48 +633,26 @@
                                         <span>Score: {score}</span>
                                     </div>
                                     <div className="h-4 bg-white/50 rounded-full overflow-hidden border border-white/60">
-                                        <div 
-                                            className={`h-full ${sectionData.btnColor.split(' ')[0]} transition-all duration-500`}
-                                            style={{ width: `${((currentQuestionIdx + 1) / sectionData.questions.length) * 100}%` }}
-                                        ></div>
+                                        <div className={`h-full ${sectionData.btnColor.split(' ')[0]} transition-all duration-500`} style={{ width: `${((currentQuestionIdx + 1) / sectionData.questions.length) * 100}%` }}></div>
                                     </div>
                                 </div>
-
                                 <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="py-12">
                                     <div className="text-center mb-8">
-                                        <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold tracking-wider mb-4 uppercase">
-                                            Fill in the blank
-                                        </span>
                                         <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-normal">
                                             {sectionData.questions[currentQuestionIdx].q.split('__________').map((part, i, arr) => (
                                                 <React.Fragment key={i}>
                                                     {part}
                                                     {i < arr.length - 1 && (
                                                         <span className="inline-block px-2">
-                                                            <input
-                                                                type="text"
-                                                                value={userInput}
-                                                                onChange={(e) => setUserInput(e.target.value)}
-                                                                onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                                                                className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg"
-                                                                placeholder="type here..."
-                                                                autoFocus
-                                                            />
+                                                            <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg" placeholder="type here..." autoFocus />
                                                         </span>
                                                     )}
                                                 </React.Fragment>
                                             ))}
                                         </h3>
                                     </div>
-
                                     <div className="flex justify-center">
-                                        <Button 
-                                            onClick={checkAnswer} 
-                                            colorClass={sectionData.btnColor}
-                                            className="w-full md:w-2/3 text-lg"
-                                        >
-                                            Check Answer <CheckCircle size={24} />
-                                        </Button>
+                                        <Button onClick={checkAnswer} colorClass={sectionData.btnColor} className="w-full md:w-2/3 text-lg">Check Answer <CheckCircle size={24} /></Button>
                                     </div>
                                 </CartoonCard>
                             </div>
@@ -562,78 +660,26 @@
 
                         {completed && (
                             <div className="text-center animate-in zoom-in-90 duration-500 flex flex-col items-center">
-                                {/* 顯示可列印的成績單 */}
-                                <div 
-                                    ref={reportRef}
-                                    className={`bg-white p-8 rounded-3xl shadow-xl border-8 ${sectionData.borderColor} max-w-sm w-full mb-8 relative overflow-hidden`}
-                                >
+                                <div className={`bg-white p-8 rounded-3xl shadow-xl border-8 ${sectionData.borderColor} max-w-sm w-full mb-8 relative overflow-hidden`}>
                                     <div className={`absolute top-0 left-0 w-full h-4 ${sectionData.color}`}></div>
                                     <div className="text-center mb-6">
-                                        <span className="text-6xl mb-2 block">
-                                            {score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}
-                                        </span>
-                                        <h3 className="text-2xl font-black text-gray-800 uppercase tracking-widest border-b-2 border-gray-100 pb-2">Certificate</h3>
+                                        <span className="text-6xl mb-2 block">{score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}</span>
+                                        <h3 className="text-2xl font-black text-gray-800 uppercase tracking-widest border-b-2 border-gray-100 pb-2">Completed!</h3>
                                     </div>
-                                    
-                                    <div className="space-y-4 mb-8">
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold">Student Name</p>
-                                            <div className="flex items-center justify-center gap-2">
-                                                <h2 className="text-3xl font-handwriting font-bold text-gray-800">{userName}</h2>
-                                                <button onClick={() => {
-                                                    const newName = prompt("Edit name:", userName);
-                                                    if (newName) setUserName(newName);
-                                                }} className="text-gray-300 hover:text-gray-500 print:hidden">
-                                                    <Edit size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold">Challenge</p>
-                                            <p className={`text-lg font-bold ${sectionData.textColor}`}>{sectionData.title}</p>
-                                        </div>
-                                        <div className="bg-gray-50 p-4 rounded-xl">
-                                            <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
-                                            <p className="text-4xl font-black text-gray-800">
-                                                {score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span>
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold">Date</p>
-                                            <p className="text-sm font-medium text-gray-600">{new Date().toLocaleDateString()}</p>
-                                        </div>
+                                    <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                                        <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
+                                        <p className="text-4xl font-black text-gray-800">{score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span></p>
                                     </div>
-                                    
-                                    <div className="text-xs text-gray-300 font-bold">
-                                        Grammar Adventure App
-                                    </div>
+                                    <p className="text-sm text-gray-500">成績已儲存！回到首頁可以查看完整答題內容。</p>
                                 </div>
-
                                 <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-md">
-                                    <Button 
-                                        onClick={exportResult} 
-                                        colorClass="bg-blue-500 hover:bg-blue-600"
-                                        className="flex-1"
-                                    >
-                                        {isExporting ? 'Generating...' : <><Download size={20} /> 下載成績單</>}
-                                    </Button>
-                                    <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600" className="flex-1">
-                                        <RefreshCw size={20} /> 再玩一次
-                                    </Button>
-                                    <Button onClick={handleGoHome} colorClass={sectionData.btnColor} className="flex-1">
-                                        <Home size={20} /> 回到大廳
-                                    </Button>
+                                    <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600" className="flex-1"><RefreshCw size={20} /> 再玩一次</Button>
+                                    <Button onClick={handleGoHome} colorClass={sectionData.btnColor} className="flex-1"><Home size={20} /> 回到大廳</Button>
                                 </div>
                             </div>
                         )}
 
-                        {showFeedback && (
-                            <FeedbackModal 
-                                isCorrect={lastResult.correct} 
-                                correctAnswer={lastResult.answer} 
-                                onNext={nextQuestion} 
-                            />
-                        )}
+                        {showFeedback && <FeedbackModal isCorrect={lastResult.correct} correctAnswer={lastResult.answer} onNext={nextQuestion} />}
                     </div>
                 </div>
             );
