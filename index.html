@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -63,12 +64,12 @@
         const Home = (p) => <IconBase {...p} d={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>} />;
         const Star = (p) => <IconBase {...p} d={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />} />;
         const RefreshCw = (p) => <IconBase {...p} d={<><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></>} />;
-        const Download = (p) => <IconBase {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>} />;
+
         const User = (p) => <IconBase {...p} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>} />;
         const Edit = (p) => <IconBase {...p} d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></>} />;
         const Bell = (p) => <IconBase {...p} d={<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>} />;
         const Trash2 = (p) => <IconBase {...p} d={<><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></>} />;
-        const FileText = (p) => <IconBase {...p} d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></>} />;
+
         const LogOut = (p) => <IconBase {...p} d={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>} />;
         const RotateCcw = (p) => <IconBase {...p} d={<><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></>} />;
 
@@ -186,12 +187,7 @@
                     <h3 className={`text-2xl font-black mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                         {isCorrect ? '答對了！ Awesome!' : '差一點點！'}
                     </h3>
-                    {!isCorrect && (
-                        <div className="mb-6 bg-red-50 p-4 rounded-xl text-left">
-                            <p className="text-sm text-gray-500 font-bold mb-1">正確答案是：</p>
-                            <p className="text-xl font-bold text-red-600">{correctAnswer}</p>
-                        </div>
-                    )}
+
                     <Button onClick={onNext} colorClass={isCorrect ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} className="w-full text-lg">
                         {isCorrect ? '下一題 Next!' : '我知道了 Got it!'}
                     </Button>
@@ -221,8 +217,8 @@
 
             const [notification, setNotification] = useState(null);
             const [showReportModal, setShowReportModal] = useState(false);
+            const [selectedRecord, setSelectedRecord] = useState(null);
             const [isExporting, setIsExporting] = useState(false);
-
             const reportRef = useRef(null);
 
             // Init: Load from localStorage
@@ -298,11 +294,19 @@
                 };
                 setQuizLog(prev => [...prev, logEntry]);
 
-                setLastResult({ correct: isCorrect, answer: currentQ.a });
-                setShowFeedback(true);
+                // 直接進入下一題
+                setUserInput("");
+                if (currentQuestionIdx < grammarData[currentSection].questions.length - 1) {
+                    setCurrentQuestionIdx(prev => prev + 1);
+                } else {
+                    // 這裡要把最後一筆 log 加入後再 finish，因為 setState 是非同步的
+                    // 但因為 React 批次處理，我們直接拿當前 logEntry 傳遞或者依賴 useEffect
+                    finishQuiz([...quizLog, logEntry]);
+                }
             };
 
             const nextQuestion = () => {
+                // 此函式在直接作答模式下不再被 FeedbackModal 觸發
                 setShowFeedback(false);
                 setUserInput("");
 
@@ -313,21 +317,42 @@
                 }
             };
 
-            const finishQuiz = () => {
+            const finishQuiz = (finalLog) => {
                 setCompleted(true);
 
                 const finalRecord = {
                     id: Date.now(),
                     timestamp: new Date().toISOString(),
                     sectionKey: currentSection,
-                    userName: userName, // Store who took the test
+                    userName: userName,
                     score: score,
                     total: grammarData[currentSection].questions.length,
-                    details: quizLog
+                    details: finalLog || quizLog
                 };
 
-                // Add to history
                 setHistory(prev => [finalRecord, ...prev]);
+            };
+
+            const exportReport = async () => {
+                if (!reportRef.current) return;
+                setIsExporting(true);
+                await new Promise(r => setTimeout(r, 500));
+                try {
+                    const canvas = await html2canvas(reportRef.current, {
+                        scale: 1.5,
+                        backgroundColor: "#ffffff",
+                        logging: false
+                    });
+                    const link = document.createElement('a');
+                    link.download = `Grammar_Report_${userName}_${new Date().toISOString().slice(0, 10)}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                } catch (err) {
+                    console.error(err);
+                    alert("匯出失敗，請重試");
+                } finally {
+                    setIsExporting(false);
+                }
             };
 
             const handleGoHome = () => {
@@ -365,41 +390,107 @@
                 }
             };
 
+            const deleteRecord = (id) => {
+                if (confirm("確定要刪除這筆紀錄嗎？")) {
+                    setHistory(prev => prev.filter(h => h.id !== id));
+                }
+            };
+
+            const viewRecord = (record) => {
+                setSelectedRecord(record);
+                setShowReportModal(true);
+            };
+
+            const closeReportModal = () => {
+                setSelectedRecord(null);
+                setShowReportModal(false);
+            };
+
             const clearAllHistory = () => {
                 if (confirm("警告：這將會清除「所有使用者」的紀錄，確定嗎？")) {
                     setHistory([]);
                 }
             };
 
-            const exportReport = async () => {
-                if (!reportRef.current) return;
-                setIsExporting(true);
-                // Wait for render
-                await new Promise(r => setTimeout(r, 500));
 
-                try {
-                    const canvas = await html2canvas(reportRef.current, {
-                        scale: 1.5,
-                        backgroundColor: "#ffffff",
-                        logging: false
-                    });
-                    const link = document.createElement('a');
-                    link.download = `Grammar_Report_${userName}_${new Date().toISOString().slice(0, 10)}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                } catch (err) {
-                    console.error(err);
-                    alert("匯出失敗，請重試");
-                } finally {
-                    setIsExporting(false);
-                }
-            };
 
             // Filtered history for display
             const userHistory = history.filter(h => h.userName === userName);
 
             // --- Views ---
 
+            // Report Modal
+            if (showReportModal) {
+                return (
+                    <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto p-4 md:p-8">
+                        <div className="max-w-4xl mx-auto bg-white rounded-3xl overflow-hidden shadow-2xl">
+                            <div className="bg-gray-100 p-4 flex justify-between items-center border-b sticky top-0 z-10">
+                                <h2 className="text-xl font-bold flex items-center gap-2">學習紀錄 ({userName})</h2>
+                                <div className="flex gap-2">
+                                    <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50">
+                                        {isExporting ? '生成中...' : '下載圖片'}
+                                    </button>
+                                    <button onClick={() => closeReportModal()} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-400">關閉</button>
+                                </div>
+                            </div>
+
+                            <div ref={reportRef} className="p-8 bg-white min-h-[600px]">
+                                <div className="text-center mb-8 border-b-2 border-orange-100 pb-6">
+                                    <h1 className="text-4xl font-black text-orange-600 mb-2">Grammar Adventure Record</h1>
+                                    <div className="flex justify-center gap-6 text-gray-600 font-medium">
+                                        <p>Student: <span className="text-black font-bold text-xl">{userName}</span></p>
+                                        <p>Date: {new Date().toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-8">
+                                    {(selectedRecord ? [selectedRecord] : Object.entries(grammarData).map(([sKey, d]) => userHistory.find(h => h.sectionKey === sKey)).filter(Boolean)).map((record) => {
+                                        const data = grammarData[record.sectionKey];
+                                        return (
+                                            <div key={record.id} className="border-2 border-gray-100 rounded-2xl overflow-hidden break-inside-avoid shadow-sm">
+                                                <div className={`p-4 ${data.color || 'bg-gray-100'}`}>
+                                                    <h3 className="font-bold text-lg text-gray-800">{data.title} ({selectedRecord ? '作答紀錄' : '最新作答'})</h3>
+                                                    <p className="text-xs opacity-70">{new Date(record.timestamp).toLocaleString()}</p>
+                                                </div>
+                                                <div className="p-4 bg-white">
+                                                    <table className="w-full text-left">
+                                                        <thead>
+                                                            <tr className="border-b text-gray-400 text-sm">
+                                                                <th className="pb-2 w-12">題號</th>
+                                                                <th className="pb-2">題目</th>
+                                                                <th className="pb-2">你的答案</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y">
+                                                            {record.details && record.details.map((detail, i) => (
+                                                                <tr key={i}>
+                                                                    <td className="py-3 text-gray-500">{i + 1}</td>
+                                                                    <td className="py-3 font-medium text-gray-800">
+                                                                        {detail.question.split('__________').map((part, pi) => (
+                                                                            <span key={pi}>
+                                                                                {part}
+                                                                                {pi === 0 && <span className="underline decoration-dotted decoration-gray-400 mx-1">____</span>}
+                                                                            </span>
+                                                                        ))}
+                                                                    </td>
+                                                                    <td className="py-3 font-bold text-blue-600">
+                                                                        {detail.userAnswer}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {userHistory.length === 0 && <p className="text-center text-gray-400 py-8">目前沒有作答紀錄</p>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
             if (showNameModal) {
                 return (
                     <div className="fixed inset-0 bg-orange-50 z-50 flex items-center justify-center p-4">
@@ -417,96 +508,7 @@
                 );
             }
 
-            // Report Modal
-            if (showReportModal) {
-                return (
-                    <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto p-4 md:p-8">
-                        <div className="max-w-4xl mx-auto bg-white rounded-3xl overflow-hidden shadow-2xl">
-                            {/* Toolbar */}
-                            <div className="bg-gray-100 p-4 flex justify-between items-center border-b sticky top-0 z-10">
-                                <h2 className="text-xl font-bold flex items-center gap-2"><FileText /> 學習歷程檔案 ({userName})</h2>
-                                <div className="flex gap-2">
-                                    <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                                        {isExporting ? 'Generating...' : <><Download size={18} /> 下載圖片</>}
-                                    </button>
-                                    <button onClick={() => setShowReportModal(false)} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-400">關閉</button>
-                                </div>
-                            </div>
 
-                            {/* Report Content to be captured */}
-                            <div ref={reportRef} className="p-8 bg-white min-h-[600px]">
-                                <div className="text-center mb-8 border-b-2 border-orange-100 pb-6">
-                                    <h1 className="text-4xl font-black text-orange-600 mb-2">Grammar Adventure Report</h1>
-                                    <div className="flex justify-center gap-6 text-gray-600 font-medium">
-                                        <p>Student: <span className="text-black font-bold text-xl">{userName}</span></p>
-                                        <p>Date: {new Date().toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-
-                                {userHistory.length === 0 ? (
-                                    <div className="text-center text-gray-400 py-12">目前還沒有測驗紀錄喔！快去挑戰吧！</div>
-                                ) : (
-                                    <div className="space-y-8">
-                                        {userHistory.map((record, idx) => (
-                                            <div key={record.id} className="border-2 border-gray-100 rounded-2xl overflow-hidden break-inside-avoid">
-                                                <div className={`p-4 flex justify-between items-center ${grammarData[record.sectionKey]?.color || 'bg-gray-100'}`}>
-                                                    <div>
-                                                        <h3 className="font-bold text-lg text-gray-800">{grammarData[record.sectionKey]?.title}</h3>
-                                                        <p className="text-xs opacity-70">{new Date(record.timestamp).toLocaleString()}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className="text-2xl font-black">{record.score}</span>
-                                                        <span className="text-sm font-medium opacity-60"> / {record.total}</span>
-                                                    </div>
-                                                </div>
-                                                {/* Detailed QA */}
-                                                <div className="p-4 bg-white">
-                                                    <table className="w-full text-left text-sm">
-                                                        <thead>
-                                                            <tr className="border-b text-gray-400">
-                                                                <th className="pb-2 w-8">#</th>
-                                                                <th className="pb-2">Question</th>
-                                                                <th className="pb-2 w-32">Your Answer</th>
-                                                                <th className="pb-2 w-32">Correct</th>
-                                                                <th className="pb-2 w-8"></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y">
-                                                            {record.details && record.details.map((detail, i) => (
-                                                                <tr key={i} className={detail.isCorrect ? 'bg-green-50/30' : 'bg-red-50/30'}>
-                                                                    <td className="py-2 text-gray-500">{i + 1}</td>
-                                                                    <td className="py-2 font-medium text-gray-800">
-                                                                        {detail.question.split('__________').map((part, pi) => (
-                                                                            <span key={pi}>
-                                                                                {part}
-                                                                                {pi === 0 && <span className="underline decoration-dotted decoration-gray-400 mx-1 text-gray-400">____</span>}
-                                                                            </span>
-                                                                        ))}
-                                                                    </td>
-                                                                    <td className={`py-2 font-bold ${detail.isCorrect ? 'text-green-600' : 'text-red-500'}`}>
-                                                                        {detail.userAnswer}
-                                                                    </td>
-                                                                    <td className="py-2 text-gray-500">{!detail.isCorrect && detail.correctAnswer}</td>
-                                                                    <td className="py-2">
-                                                                        {detail.isCorrect ? <CheckCircle className="text-green-500 w-5 h-5" /> : <XCircle className="text-red-400 w-5 h-5" />}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="mt-8 text-center text-xs text-gray-300">
-                                    Generated by Grammar Adventure App
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
 
             // Dashboard
             if (!currentSection) {
@@ -583,11 +585,11 @@
                                     <div className="flex gap-2 w-full sm:w-auto">
                                         {userHistory.length > 0 && (
                                             <Button onClick={resetMyProgress} colorClass="bg-red-400 hover:bg-red-500" className="flex-1 sm:flex-none text-sm px-4">
-                                                <RotateCcw size={18} /> 重置我的進度
+                                                <RotateCcw size={18} /> 重置進度
                                             </Button>
                                         )}
                                         <Button onClick={() => setShowReportModal(true)} colorClass="bg-gray-800 hover:bg-black" className="flex-1 sm:flex-none text-sm px-4">
-                                            <FileText size={18} /> 查看與下載成績單
+                                            查看紀錄與下載
                                         </Button>
                                     </div>
                                 </div>
@@ -633,6 +635,36 @@
                                         </div>
                                     </CartoonCard>
                                 </div>
+
+                                {/* Per-module history list moved inside */}
+                                <div className="mt-8 bg-white/50 backdrop-blur-sm rounded-3xl p-6 border-2 border-white/50">
+                                    <h3 className={`text-lg font-bold ${sectionData.textColor} mb-4 flex items-center gap-2`}>
+                                        <RotateCcw size={18} /> 歷史作答紀錄 (History)
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {userHistory.filter(h => h.sectionKey === currentSection).length === 0 ? (
+                                            <p className="text-center py-8 text-gray-500 italic bg-white/30 rounded-2xl">目前還沒有作答紀錄喔！</p>
+                                        ) : (
+                                            userHistory.filter(h => h.sectionKey === currentSection).map(record => (
+                                                <div key={record.id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-white group">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${sectionData.color} ${sectionData.textColor}`}>
+                                                            {record.score}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-gray-700">{new Date(record.timestamp).toLocaleDateString()}</p>
+                                                            <p className="text-xs text-gray-400">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-3">
+                                                        <button onClick={() => viewRecord(record)} className="text-blue-600 font-bold hover:underline px-3 py-1 bg-blue-50 rounded-lg text-sm">查看內容</button>
+                                                        <button onClick={() => deleteRecord(record.id)} className="text-red-400 font-bold hover:underline px-3 py-1 bg-red-50 rounded-lg text-sm">刪除</button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -673,7 +705,7 @@
                                                     {part}
                                                     {i < arr.length - 1 && (
                                                         <span className="inline-block px-2">
-                                                            <input key={currentQuestionIdx} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg" placeholder="type here..." autoFocus />
+                                                            <input key={currentQuestionIdx} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg" placeholder="" autoFocus autoCorrect="off" autoCapitalize="none" spellCheck="false" autoComplete="new-password" />
                                                         </span>
                                                     )}
                                                 </React.Fragment>
@@ -699,7 +731,7 @@
                                         <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
                                         <p className="text-4xl font-black text-gray-800">{score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span></p>
                                     </div>
-                                    <p className="text-sm text-gray-500">成績已儲存！回到首頁可以查看完整答題內容。</p>
+                                    <p className="text-sm text-gray-500">成績已儲存！回到首頁可以查看最佳紀錄。</p>
                                 </div>
                                 <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-md">
                                     <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600" className="flex-1"><RefreshCw size={20} /> 再玩一次</Button>
@@ -708,7 +740,7 @@
                             </div>
                         )}
 
-                        {showFeedback && <FeedbackModal isCorrect={lastResult.correct} correctAnswer={lastResult.answer} onNext={nextQuestion} />}
+
                     </div>
                 </div>
             );
