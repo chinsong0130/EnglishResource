@@ -445,17 +445,21 @@
                             <div className="relative">
                                 {/* Success Image Overlay for LINE/Mobile */}
                                 {reportImageUrl && (
-                                    <div className="absolute inset-0 bg-black/95 z-40 flex flex-col items-center justify-start p-2 md:p-4 animate-in fade-in duration-300 overflow-y-auto">
+                                    <div className="absolute inset-0 bg-black/95 z-40 flex flex-col p-2 animate-in fade-in duration-300">
                                         <button onClick={() => setReportImageUrl(null)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-50 bg-white/20 p-2 rounded-full transition-colors focus:outline-none backdrop-blur-md">
                                             <X size={24} />
                                         </button>
-                                        <div className="mt-12 mb-4 w-full flex justify-center">
-                                            <img src={reportImageUrl} className="max-w-full rounded-lg shadow-2xl border-2 border-white/20" alt="Report" />
-                                        </div>
-                                        <div className="text-center px-4 pb-8">
-                                            <p className="text-white text-lg font-black mb-1">✨ 學習報表製作完成！ ✨</p>
-                                            <p className="text-orange-400 font-bold mb-4">👉 請長按上方圖片，選擇「儲存圖片」或「直接分享」給老師</p>
-                                            <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/10 hover:bg-white/20 text-white border-white/40 ring-1 ring-white/30 text-sm">點此關閉預覽</Button>
+
+                                        <div className="flex-1 flex flex-col min-h-0 pt-10">
+                                            <div className="flex-1 flex items-center justify-center overflow-hidden p-2">
+                                                <img src={reportImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl border-2 border-white/20" alt="Report" />
+                                            </div>
+
+                                            <div className="text-center py-4 bg-black/40 backdrop-blur-sm rounded-2xl mx-2 mb-2 border border-white/10">
+                                                <p className="text-white text-base font-black mb-1">✨ 報表製作完成！ ✨</p>
+                                                <p className="text-orange-400 text-sm font-bold mb-3">👉 請長按上方圖片分享給老師</p>
+                                                <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/10 hover:bg-white/20 text-white border-white/40 ring-1 ring-white/30 text-xs py-2 px-4">關閉預覽</Button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
