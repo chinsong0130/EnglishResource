@@ -356,27 +356,7 @@
 
                     const dataUrl = canvas.toDataURL('image/png');
                     setReportImageUrl(dataUrl);
-
-                    // Try Web Share API if available
-                    if (navigator.share && navigator.canShare) {
-                        const blob = await (await fetch(dataUrl)).blob();
-                        const file = new File([blob], `Grammar_Report_${userName}.png`, { type: 'image/png' });
-
-                        if (navigator.canShare({ files: [file] })) {
-                            try {
-                                await navigator.share({
-                                    files: [file],
-                                    title: 'Grammar Adventure 學習紀錄',
-                                    text: `這是 ${userName} 的英文語法練習紀錄！`
-                                });
-                                return; // Shared successfully
-                            } catch (shareErr) {
-                                console.log("Share failed or cancelled", shareErr);
-                            }
-                        }
-                    }
-
-                    // Fallback: Just keep the image visible for long-press
+                    // We skip auto-navigator.share to focus on the preview for all users
                 } catch (err) {
                     console.error(err);
                     alert("方案生成失敗，請截圖或重試");
@@ -456,7 +436,7 @@
                                 <h2 className="text-xl font-bold flex items-center gap-2">學習紀錄 ({userName})</h2>
                                 <div className="flex gap-2">
                                     <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                                        <Share2 size={18} /> {isExporting ? '生成中...' : '分享/傳給老師'}
+                                        <Share2 size={18} /> {isExporting ? '處理中...' : '產生分享圖片'}
                                     </button>
                                     <button onClick={() => closeReportModal()} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-400">關閉</button>
                                 </div>
@@ -465,18 +445,18 @@
                             <div className="relative">
                                 {/* Success Image Overlay for LINE/Mobile */}
                                 {reportImageUrl && (
-                                    <div className="absolute inset-0 bg-black/90 z-30 flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
-                                        <button onClick={() => setReportImageUrl(null)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-40 bg-white/10 p-2 rounded-full transition-colors focus:outline-none">
-                                            <X size={28} />
+                                    <div className="absolute inset-0 bg-black/95 z-40 flex flex-col items-center justify-start p-2 md:p-4 animate-in fade-in duration-300 overflow-y-auto">
+                                        <button onClick={() => setReportImageUrl(null)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-50 bg-white/20 p-2 rounded-full transition-colors focus:outline-none backdrop-blur-md">
+                                            <X size={24} />
                                         </button>
-                                        <div className="bg-white p-2 rounded-xl mb-4 max-w-full">
-                                            <img src={reportImageUrl} className="max-h-[70vh] rounded-lg shadow-2xl" alt="Report" />
+                                        <div className="mt-12 mb-4 w-full flex justify-center">
+                                            <img src={reportImageUrl} className="max-w-full rounded-lg shadow-2xl border-2 border-white/20" alt="Report" />
                                         </div>
-                                        <p className="text-white font-bold text-center mb-6">
-                                            ✨ 紀錄已生成！ ✨<br />
-                                            <span className="text-orange-400 text-sm">請「長按圖片」選擇「儲存」或「分享」給老師</span>
-                                        </p>
-                                        <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/20 hover:bg-white/30 text-white border-white/40">返回查看</Button>
+                                        <div className="text-center px-4 pb-8">
+                                            <p className="text-white text-lg font-black mb-1">✨ 學習報表製作完成！ ✨</p>
+                                            <p className="text-orange-400 font-bold mb-4">👉 請長按上方圖片，選擇「儲存圖片」或「直接分享」給老師</p>
+                                            <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/10 hover:bg-white/20 text-white border-white/40 ring-1 ring-white/30 text-sm">點此關閉預覽</Button>
+                                        </div>
                                     </div>
                                 )}
 
