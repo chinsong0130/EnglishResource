@@ -302,9 +302,7 @@
                 if (currentQuestionIdx < grammarData[currentSection].questions.length - 1) {
                     setCurrentQuestionIdx(prev => prev + 1);
                 } else {
-                    // 這裡要把最後一筆 log 加入後再 finish，因為 setState 是非同步的
-                    // 但因為 React 批次處理，我們直接拿當前 logEntry 傳遞或者依賴 useEffect
-                    finishQuiz([...quizLog, logEntry]);
+                    finishQuiz([...quizLog, logEntry], newScore);
                 }
             };
 
@@ -316,19 +314,20 @@
                 if (currentQuestionIdx < grammarData[currentSection].questions.length - 1) {
                     setCurrentQuestionIdx(prev => prev + 1);
                 } else {
-                    finishQuiz();
+                    finishQuiz(quizLog, score);
                 }
             };
 
-            const finishQuiz = (finalLog) => {
+            const finishQuiz = (finalLog, finalScore) => {
                 setCompleted(true);
+                const actualScore = finalScore !== undefined ? finalScore : score;
 
                 const finalRecord = {
                     id: Date.now(),
                     timestamp: new Date().toISOString(),
                     sectionKey: currentSection,
                     userName: userName,
-                    score: score,
+                    score: actualScore,
                     total: grammarData[currentSection].questions.length,
                     details: finalLog || quizLog
                 };
@@ -362,6 +361,26 @@
                     alert("方案生成失敗，請截圖或重試");
                 } finally {
                     setIsExporting(false);
+                }
+            };
+
+            const handleNativeShare = async () => {
+                if (!reportImageUrl) return;
+                try {
+                    const blob = await (await fetch(reportImageUrl)).blob();
+                    const file = new File([blob], `Grammar_Report_${userName}.png`, { type: 'image/png' });
+
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Grammar Adventure 學習紀錄',
+                            text: `這是 ${userName} 的英文語法練習紀錄！`
+                        });
+                    } else {
+                        alert("點擊下方關閉預覽，對圖片「長按」即可分享或儲存囉！");
+                    }
+                } catch (err) {
+                    console.error("Share failed", err);
                 }
             };
 
@@ -435,9 +454,15 @@
                             <div className="bg-gray-100 p-4 flex justify-between items-center border-b sticky top-0 z-20">
                                 <h2 className="text-xl font-bold flex items-center gap-2">學習紀錄 ({userName})</h2>
                                 <div className="flex gap-2">
-                                    <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                                        <Share2 size={18} /> {isExporting ? '處理中...' : '產生分享圖片'}
-                                    </button>
+                                    {!reportImageUrl ? (
+                                        <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                                            <Share2 size={18} /> {isExporting ? '處理中...' : '產生分享圖片'}
+                                        </button>
+                                    ) : (
+                                        <button onClick={handleNativeShare} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-600 flex items-center gap-2 animate-bounce">
+                                            <Share2 size={18} /> 傳送到 LINE/分享
+                                        </button>
+                                    )}
                                     <button onClick={() => closeReportModal()} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-400">關閉</button>
                                 </div>
                             </div>
@@ -451,14 +476,17 @@
                                         </button>
 
                                         <div className="flex-1 flex flex-col min-h-0 pt-10">
+                                            <div className="text-center py-2">
+                                                <p className="text-white text-lg font-black">✨ 報表製作完成！ ✨</p>
+                                                <p className="text-orange-400 font-bold">👉 長按圖片分享或下載</p>
+                                            </div>
+
                                             <div className="flex-1 flex items-center justify-center overflow-hidden p-2">
                                                 <img src={reportImageUrl} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl border-2 border-white/20" alt="Report" />
                                             </div>
 
-                                            <div className="text-center py-4 bg-black/40 backdrop-blur-sm rounded-2xl mx-2 mb-2 border border-white/10">
-                                                <p className="text-white text-base font-black mb-1">✨ 報表製作完成！ ✨</p>
-                                                <p className="text-orange-400 text-sm font-bold mb-3">👉 請長按上方圖片分享給老師</p>
-                                                <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/10 hover:bg-white/20 text-white border-white/40 ring-1 ring-white/30 text-xs py-2 px-4">關閉預覽</Button>
+                                            <div className="text-center py-4 px-4">
+                                                <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/10 hover:bg-white/20 text-white border-white/40 ring-1 ring-white/30 text-xs py-2 px-8 mx-auto">關閉預覽</Button>
                                             </div>
                                         </div>
                                     </div>
