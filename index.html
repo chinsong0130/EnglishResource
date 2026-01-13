@@ -72,6 +72,7 @@
 
         const LogOut = (p) => <IconBase {...p} d={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>} />;
         const RotateCcw = (p) => <IconBase {...p} d={<><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></>} />;
+        const Share2 = (p) => <IconBase {...p} d={<><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></>} />;
 
         // --- Data ---
         const grammarData = {
@@ -219,6 +220,7 @@
             const [showReportModal, setShowReportModal] = useState(false);
             const [selectedRecord, setSelectedRecord] = useState(null);
             const [isExporting, setIsExporting] = useState(false);
+            const [reportImageUrl, setReportImageUrl] = useState(null);
             const reportRef = useRef(null);
 
             // Init: Load from localStorage
@@ -333,23 +335,50 @@
                 setHistory(prev => [finalRecord, ...prev]);
             };
 
+            const closeReportModal = () => {
+                setSelectedRecord(null);
+                setShowReportModal(false);
+                setReportImageUrl(null);
+            };
+
             const exportReport = async () => {
                 if (!reportRef.current) return;
                 setIsExporting(true);
                 await new Promise(r => setTimeout(r, 500));
                 try {
                     const canvas = await html2canvas(reportRef.current, {
-                        scale: 1.5,
+                        scale: 2,
                         backgroundColor: "#ffffff",
-                        logging: false
+                        logging: false,
+                        useCORS: true
                     });
-                    const link = document.createElement('a');
-                    link.download = `Grammar_Report_${userName}_${new Date().toISOString().slice(0, 10)}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
+
+                    const dataUrl = canvas.toDataURL('image/png');
+                    setReportImageUrl(dataUrl);
+
+                    // Try Web Share API if available
+                    if (navigator.share && navigator.canShare) {
+                        const blob = await (await fetch(dataUrl)).blob();
+                        const file = new File([blob], `Grammar_Report_${userName}.png`, { type: 'image/png' });
+
+                        if (navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share({
+                                    files: [file],
+                                    title: 'Grammar Adventure 學習紀錄',
+                                    text: `這是 ${userName} 的英文語法練習紀錄！`
+                                });
+                                return; // Shared successfully
+                            } catch (shareErr) {
+                                console.log("Share failed or cancelled", shareErr);
+                            }
+                        }
+                    }
+
+                    // Fallback: Just keep the image visible for long-press
                 } catch (err) {
                     console.error(err);
-                    alert("匯出失敗，請重試");
+                    alert("方案生成失敗，請截圖或重試");
                 } finally {
                     setIsExporting(false);
                 }
@@ -401,11 +430,6 @@
                 setShowReportModal(true);
             };
 
-            const closeReportModal = () => {
-                setSelectedRecord(null);
-                setShowReportModal(false);
-            };
-
             const clearAllHistory = () => {
                 if (confirm("警告：這將會清除「所有使用者」的紀錄，確定嗎？")) {
                     setHistory([]);
@@ -419,335 +443,349 @@
 
             // --- Views ---
 
+            const recordsToDisplay = selectedRecord ? [selectedRecord] : Object.entries(grammarData).map(([sKey, d]) => userHistory.find(h => h.sectionKey === sKey)).filter(Boolean);
+            const currentSectionData = currentSection ? grammarData[currentSection] : null;
+
             // Report Modal
             if (showReportModal) {
                 return (
                     <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto p-4 md:p-8">
                         <div className="max-w-4xl mx-auto bg-white rounded-3xl overflow-hidden shadow-2xl">
-                            <div className="bg-gray-100 p-4 flex justify-between items-center border-b sticky top-0 z-10">
+                            <div className="bg-gray-100 p-4 flex justify-between items-center border-b sticky top-0 z-20">
                                 <h2 className="text-xl font-bold flex items-center gap-2">學習紀錄 ({userName})</h2>
                                 <div className="flex gap-2">
-                                    <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50">
-                                        {isExporting ? '生成中...' : '下載圖片'}
+                                    <button onClick={exportReport} disabled={isExporting} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                                        <Share2 size={18} /> {isExporting ? '生成中...' : '分享/傳給老師'}
                                     </button>
                                     <button onClick={() => closeReportModal()} className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-400">關閉</button>
                                 </div>
                             </div>
 
-                            <div ref={reportRef} className="p-8 bg-white min-h-[600px]">
-                                <div className="text-center mb-8 border-b-2 border-orange-100 pb-6">
-                                    <h1 className="text-4xl font-black text-orange-600 mb-2">Grammar Adventure Record</h1>
-                                    <div className="flex justify-center gap-6 text-gray-600 font-medium">
-                                        <p>Student: <span className="text-black font-bold text-xl">{userName}</span></p>
-                                        <p>Date: {new Date().toLocaleDateString()}</p>
+                            <div className="relative">
+                                {/* Success Image Overlay for LINE/Mobile */}
+                                {reportImageUrl && (
+                                    <div className="absolute inset-0 bg-black/90 z-30 flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+                                        <div className="bg-white p-2 rounded-xl mb-4 max-w-full">
+                                            <img src={reportImageUrl} className="max-h-[70vh] rounded-lg shadow-2xl" alt="Report" />
+                                        </div>
+                                        <p className="text-white font-bold text-center mb-6">
+                                            ✨ 紀錄已生成！ ✨<br />
+                                            <span className="text-orange-400 text-sm">請「長按圖片」選擇「儲存」或「分享」給老師</span>
+                                        </p>
+                                        <Button onClick={() => setReportImageUrl(null)} colorClass="bg-white/20 hover:bg-white/30 text-white border-white/40">返回查看</Button>
+                                    </div>
+                                )}
+
+                                <div ref={reportRef} className="p-8 bg-white min-h-[600px]">
+                                    <div className="text-center mb-8 border-b-2 border-orange-100 pb-6">
+                                        <h1 className="text-4xl font-black text-orange-600 mb-2">Grammar Adventure Record</h1>
+                                        <div className="flex justify-center gap-6 text-gray-600 font-medium">
+                                            <p>Student: <span className="text-black font-bold text-xl">{userName}</span></p>
+                                            <p>Date: {new Date().toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-8">
+                                        {recordsToDisplay.map((record) => {
+                                            const data = grammarData[record.sectionKey];
+                                            return (
+                                                <div key={record.id} className="border-2 border-gray-100 rounded-2xl overflow-hidden break-inside-avoid shadow-sm">
+                                                    <div className={`p-4 ${data.color || 'bg-gray-100'}`}>
+                                                        <h3 className="font-bold text-lg text-gray-800">{data.title} ({selectedRecord ? '作答紀錄' : '最新作答'})</h3>
+                                                        <p className="text-xs opacity-70">{new Date(record.timestamp).toLocaleString()}</p>
+                                                    </div>
+                                                    <div className="p-4 bg-white">
+                                                        <table className="w-full text-left">
+                                                            <thead>
+                                                                <tr className="border-b text-gray-400 text-sm">
+                                                                    <th className="pb-2 w-12">題號</th>
+                                                                    <th className="pb-2">題目</th>
+                                                                    <th className="pb-2">你的答案</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y">
+                                                                {record.details && record.details.map((detail, i) => (
+                                                                    <tr key={i}>
+                                                                        <td className="py-3 text-gray-500">{i + 1}</td>
+                                                                        <td className="py-3 font-medium text-gray-800">
+                                                                            {detail.question.split('__________').map((part, pi) => (
+                                                                                <span key={pi}>
+                                                                                    {part}
+                                                                                    {pi === 0 && <span className="underline decoration-dotted decoration-gray-400 mx-1">____</span>}
+                                                                                </span>
+                                                                            ))}
+                                                                        </td>
+                                                                        <td className="py-3 font-bold text-blue-600">
+                                                                            {detail.userAnswer}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {userHistory.length === 0 && <p className="text-center text-gray-400 py-8">目前沒有作答紀錄</p>}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        );
+            }
 
-                                <div className="space-y-8">
-                                    {(selectedRecord ? [selectedRecord] : Object.entries(grammarData).map(([sKey, d]) => userHistory.find(h => h.sectionKey === sKey)).filter(Boolean)).map((record) => {
-                                        const data = grammarData[record.sectionKey];
+                        if (showNameModal) {
+                return (
+                        <div className="fixed inset-0 bg-orange-50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border-4 border-orange-200 text-center">
+                                <span className="text-6xl mb-4 block">👋</span>
+                                <h2 className="text-3xl font-black text-orange-600 mb-2">Welcome!</h2>
+                                <p className="text-gray-500 mb-6">歡迎來到 Grammar Adventure，請問你叫什麼名字？</p>
+                                <form onSubmit={handleNameSubmit}>
+                                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Enter your name" className="w-full text-center text-xl p-3 border-b-4 border-gray-300 focus:border-orange-500 outline-none bg-gray-50 rounded-t-lg mb-6 transition-colors" autoFocus required />
+                                    <Button className="w-full text-lg" colorClass="bg-orange-500 hover:bg-orange-600">開始冒險 Start!</Button>
+                                </form>
+                            </div>
+                        </div>
+                        );
+            }
+
+
+
+                        if (!currentSection) {
+                return (
+                        <div className="min-h-screen bg-orange-50 font-sans p-4 md:p-8 relative">
+                            {notification && (
+                                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2 animate-[slideDown_0.5s_ease-out]">
+                                    <Bell className="w-5 h-5" />
+                                    <span className="font-bold">{notification}</span>
+                                    <button onClick={() => setNotification(null)} className="ml-2 hover:bg-green-600 rounded-full p-1">X</button>
+                                </div>
+                            )}
+
+                            <div className="max-w-4xl mx-auto">
+                                <header className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
+                                    <div className="text-center md:text-left">
+                                        <h1 className="text-4xl md:text-5xl font-black text-orange-600 mb-2 drop-shadow-md tracking-tight">
+                                            Grammar Adventure
+                                        </h1>
+                                        <p className="text-lg text-gray-600 font-medium">Hi, <span className="text-orange-600 font-bold border-b-2 border-orange-300">{userName}</span>! 準備好征服英文時態了嗎？🚀</p>
+                                    </div>
+                                    <button
+                                        onClick={handleSwitchUser}
+                                        className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border-2 border-orange-100 text-orange-600 font-bold hover:bg-orange-50 transition-colors text-sm"
+                                    >
+                                        <LogOut size={16} /> 登出 / 更換使用者
+                                    </button>
+                                </header>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                                    {Object.entries(grammarData).map(([key, data]) => {
+                                        const bestScore = getProgress(key);
+                                        const progress = (bestScore / data.questions.length) * 100;
+
                                         return (
-                                            <div key={record.id} className="border-2 border-gray-100 rounded-2xl overflow-hidden break-inside-avoid shadow-sm">
-                                                <div className={`p-4 ${data.color || 'bg-gray-100'}`}>
-                                                    <h3 className="font-bold text-lg text-gray-800">{data.title} ({selectedRecord ? '作答紀錄' : '最新作答'})</h3>
-                                                    <p className="text-xs opacity-70">{new Date(record.timestamp).toLocaleString()}</p>
+                                            <button
+                                                key={key}
+                                                onClick={() => handleSectionSelect(key)}
+                                                className={`group relative overflow-hidden ${data.color} border-4 ${data.borderColor} rounded-3xl p-6 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]`}
+                                            >
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <span className="text-5xl group-hover:animate-bounce">{data.icon}</span>
+                                                    <div className="text-right"><ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity inline-block`} /></div>
                                                 </div>
-                                                <div className="p-4 bg-white">
-                                                    <table className="w-full text-left">
-                                                        <thead>
-                                                            <tr className="border-b text-gray-400 text-sm">
-                                                                <th className="pb-2 w-12">題號</th>
-                                                                <th className="pb-2">題目</th>
-                                                                <th className="pb-2">你的答案</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y">
-                                                            {record.details && record.details.map((detail, i) => (
-                                                                <tr key={i}>
-                                                                    <td className="py-3 text-gray-500">{i + 1}</td>
-                                                                    <td className="py-3 font-medium text-gray-800">
-                                                                        {detail.question.split('__________').map((part, pi) => (
-                                                                            <span key={pi}>
-                                                                                {part}
-                                                                                {pi === 0 && <span className="underline decoration-dotted decoration-gray-400 mx-1">____</span>}
-                                                                            </span>
-                                                                        ))}
-                                                                    </td>
-                                                                    <td className="py-3 font-bold text-blue-600">
-                                                                        {detail.userAnswer}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                <h2 className={`text-2xl font-bold ${data.textColor} mb-2`}>{data.title}</h2>
+                                                <div className="mt-4 bg-white/50 rounded-full h-3 overflow-hidden border border-white/30">
+                                                    <div className={`h-full ${data.progressColor} transition-all duration-1000 ease-out`} style={{ width: `${progress}%` }}></div>
                                                 </div>
-                                            </div>
+                                                <div className="flex justify-between mt-1">
+                                                    <p className={`${data.textColor} text-xs font-bold opacity-70`}>最佳成績: {bestScore}/{data.questions.length}</p>
+                                                    <p className={`${data.textColor} text-xs font-bold opacity-70`}>{Math.round(progress)}% 完成</p>
+                                                </div>
+                                            </button>
                                         );
                                     })}
-                                    {userHistory.length === 0 && <p className="text-center text-gray-400 py-8">目前沒有作答紀錄</p>}
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-            if (showNameModal) {
-                return (
-                    <div className="fixed inset-0 bg-orange-50 z-50 flex items-center justify-center p-4">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border-4 border-orange-200 text-center">
-                            <span className="text-6xl mb-4 block">👋</span>
-                            <h2 className="text-3xl font-black text-orange-600 mb-2">Welcome!</h2>
-                            <p className="text-gray-500 mb-6">歡迎來到 Grammar Adventure，請問你叫什麼名字？</p>
-                            <form onSubmit={handleNameSubmit}>
-                                <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Enter your name" className="w-full text-center text-xl p-3 border-b-4 border-gray-300 focus:border-orange-500 outline-none bg-gray-50 rounded-t-lg mb-6 transition-colors" autoFocus required />
-                                <Button className="w-full text-lg" colorClass="bg-orange-500 hover:bg-orange-600">開始冒險 Start!</Button>
-                            </form>
-                            {/* If there is history, maybe show existing users? Simplified for now */}
-                        </div>
-                    </div>
-                );
-            }
 
-
-
-            // Dashboard
-            if (!currentSection) {
-                return (
-                    <div className="min-h-screen bg-orange-50 font-sans p-4 md:p-8 relative">
-                        {notification && (
-                            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2 animate-[slideDown_0.5s_ease-out]">
-                                <Bell className="w-5 h-5" />
-                                <span className="font-bold">{notification}</span>
-                                <button onClick={() => setNotification(null)} className="ml-2 hover:bg-green-600 rounded-full p-1">X</button>
-                            </div>
-                        )}
-
-                        <div className="max-w-4xl mx-auto">
-                            <header className="flex flex-col md:flex-row items-center justify-between mb-12 gap-4">
-                                <div className="text-center md:text-left">
-                                    <h1 className="text-4xl md:text-5xl font-black text-orange-600 mb-2 drop-shadow-md tracking-tight">
-                                        Grammar Adventure
-                                    </h1>
-                                    <p className="text-lg text-gray-600 font-medium">Hi, <span className="text-orange-600 font-bold border-b-2 border-orange-300">{userName}</span>! 準備好征服英文時態了嗎？🚀</p>
-                                </div>
-                                <button
-                                    onClick={handleSwitchUser}
-                                    className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border-2 border-orange-100 text-orange-600 font-bold hover:bg-orange-50 transition-colors text-sm"
-                                >
-                                    <LogOut size={16} /> 登出 / 更換使用者
-                                </button>
-                            </header>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                                {Object.entries(grammarData).map(([key, data]) => {
-                                    const bestScore = getProgress(key);
-                                    const progress = (bestScore / data.questions.length) * 100;
-
-                                    return (
-                                        <button
-                                            key={key}
-                                            onClick={() => handleSectionSelect(key)}
-                                            className={`group relative overflow-hidden ${data.color} border-4 ${data.borderColor} rounded-3xl p-6 text-left transition-all hover:scale-[1.02] active:scale-95 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]`}
-                                        >
-                                            <div className="flex justify-between items-start mb-4">
-                                                <span className="text-5xl group-hover:animate-bounce">{data.icon}</span>
-                                                <div className="text-right"><ArrowRight className={`w-8 h-8 ${data.textColor} opacity-0 group-hover:opacity-100 transition-opacity inline-block`} /></div>
-                                            </div>
-                                            <h2 className={`text-2xl font-bold ${data.textColor} mb-2`}>{data.title}</h2>
-                                            <div className="mt-4 bg-white/50 rounded-full h-3 overflow-hidden border border-white/30">
-                                                <div className={`h-full ${data.progressColor} transition-all duration-1000 ease-out`} style={{ width: `${progress}%` }}></div>
-                                            </div>
-                                            <div className="flex justify-between mt-1">
-                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>最佳成績: {bestScore}/{data.questions.length}</p>
-                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>{Math.round(progress)}% 完成</p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Records Section */}
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-orange-100">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-bold text-gray-700 flex items-center gap-2">
-                                        <Star className="text-yellow-400" /> 我的學習歷程 (My Records)
-                                    </h3>
-                                    {/* Admin/Debug: Clear ALL history */}
-                                    {history.length > 0 && (
-                                        <button onClick={clearAllHistory} title="清除所有使用者的紀錄" className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={16} /></button>
-                                    )}
-                                </div>
-                                <div className="flex flex-col sm:flex-row gap-4 items-center bg-orange-50 p-6 rounded-2xl">
-                                    <div className="flex-1">
-                                        <p className="text-gray-600 mb-1">{userName} 已完成 <strong className="text-orange-600">{userHistory.length}</strong> 次測驗</p>
-                                        <p className="text-xs text-gray-400">所有的答題紀錄都保存在這裡。</p>
+                                <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-orange-100">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xl font-bold text-gray-700 flex items-center gap-2">
+                                            <Star className="text-yellow-400" /> 我的學習歷程 (My Records)
+                                        </h3>
+                                        {history.length > 0 && (
+                                            <button onClick={clearAllHistory} title="清除所有使用者的紀錄" className="text-gray-300 hover:text-red-500 p-2"><Trash2 size={16} /></button>
+                                        )}
                                     </div>
-                                    <div className="flex gap-2 w-full sm:w-auto">
-                                        {userHistory.length > 0 && (
-                                            <Button onClick={resetMyProgress} colorClass="bg-red-400 hover:bg-red-500" className="flex-1 sm:flex-none text-sm px-4">
-                                                <RotateCcw size={18} /> 重置進度
+                                    <div className="flex flex-col sm:flex-row gap-4 items-center bg-orange-50 p-6 rounded-2xl">
+                                        <div className="flex-1">
+                                            <p className="text-gray-600 mb-1">{userName} 已完成 <strong className="text-orange-600">{userHistory.length}</strong> 次測驗</p>
+                                            <p className="text-xs text-gray-400">所有的答題紀錄都保存在這裡。</p>
+                                        </div>
+                                        <div className="flex gap-2 w-full sm:w-auto">
+                                            {userHistory.length > 0 && (
+                                                <Button onClick={resetMyProgress} colorClass="bg-red-400 hover:bg-red-500" className="flex-1 sm:flex-none text-sm px-4">
+                                                    <RotateCcw size={18} /> 重置進度
+                                                </Button>
+                                            )}
+                                            <Button onClick={() => setShowReportModal(true)} colorClass="bg-gray-800 hover:bg-black" className="flex-1 sm:flex-none text-sm px-4">
+                                                查看紀錄與下載
                                             </Button>
-                                        )}
-                                        <Button onClick={() => setShowReportModal(true)} colorClass="bg-gray-800 hover:bg-black" className="flex-1 sm:flex-none text-sm px-4">
-                                            查看紀錄與下載
-                                        </Button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <footer className="mt-16 text-center text-gray-400 font-medium pb-8"><p>Designed for fun learning! ✨</p></footer>
+                                <footer className="mt-16 text-center text-gray-400 font-medium pb-8"><p>Designed for fun learning! ✨</p></footer>
+                            </div>
                         </div>
-                    </div>
-                );
+                        );
             }
 
-            const sectionData = grammarData[currentSection];
+                        const sectionData = grammarData[currentSection];
 
-            // Quiz View
-            return (
-                <div className={`min-h-screen ${sectionData.color} font-sans p-4 md:p-8 transition-colors duration-500`}>
-                    <div className="max-w-3xl mx-auto">
-                        <div className="flex items-center justify-between mb-8 bg-white/60 backdrop-blur-sm p-4 rounded-2xl border-2 border-white/50">
-                            <button onClick={handleGoHome} className="flex items-center gap-2 text-gray-600 font-bold hover:text-gray-900 transition-colors">
-                                <Home className="w-5 h-5" /> 回首頁
-                            </button>
-                            <h2 className={`text-xl md:text-2xl font-black ${sectionData.textColor} text-center hidden md:block`}>{sectionData.title}</h2>
-                            <div className="w-24 text-right font-bold text-gray-500 flex items-center justify-end gap-2"><User size={16} /> {userName}</div>
-                        </div>
-
-                        {!mode && (
-                            <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-8 duration-500">
-                                <div className="text-center mb-4">
-                                    <span className="text-8xl block mb-4 animate-pulse">{sectionData.icon}</span>
-                                    <h2 className={`text-3xl font-black ${sectionData.textColor}`}>準備好開始了嗎？</h2>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
-                                        <div onClick={() => setMode('learn')} className="h-full flex flex-col items-center justify-center text-center gap-4">
-                                            <BookOpen className={`w-16 h-16 ${sectionData.textColor}`} />
-                                            <div><h3 className="text-2xl font-bold text-gray-800">學習模式</h3><p className="text-gray-500">複習重點</p></div>
-                                        </div>
-                                    </CartoonCard>
-                                    <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
-                                        <div onClick={startQuiz} className="h-full flex flex-col items-center justify-center text-center gap-4">
-                                            <Star className={`w-16 h-16 ${sectionData.textColor}`} />
-                                            <div><h3 className="text-2xl font-bold text-gray-800">挑戰模式</h3><p className="text-gray-500">開始測驗</p></div>
-                                        </div>
-                                    </CartoonCard>
+                        // Quiz View
+                        return (
+                        <div className={`min-h-screen ${sectionData.color} font-sans p-4 md:p-8 transition-colors duration-500`}>
+                            <div className="max-w-3xl mx-auto">
+                                <div className="flex items-center justify-between mb-8 bg-white/60 backdrop-blur-sm p-4 rounded-2xl border-2 border-white/50">
+                                    <button onClick={handleGoHome} className="flex items-center gap-2 text-gray-600 font-bold hover:text-gray-900 transition-colors">
+                                        <Home className="w-5 h-5" /> 回首頁
+                                    </button>
+                                    <h2 className={`text-xl md:text-2xl font-black ${sectionData.textColor} text-center hidden md:block`}>{sectionData.title}</h2>
+                                    <div className="w-24 text-right font-bold text-gray-500 flex items-center justify-end gap-2"><User size={16} /> {userName}</div>
                                 </div>
 
-                                {/* Per-module history list moved inside */}
-                                <div className="mt-8 bg-white/50 backdrop-blur-sm rounded-3xl p-6 border-2 border-white/50">
-                                    <h3 className={`text-lg font-bold ${sectionData.textColor} mb-4 flex items-center gap-2`}>
-                                        <RotateCcw size={18} /> 歷史作答紀錄 (History)
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {userHistory.filter(h => h.sectionKey === currentSection).length === 0 ? (
-                                            <p className="text-center py-8 text-gray-500 italic bg-white/30 rounded-2xl">目前還沒有作答紀錄喔！</p>
-                                        ) : (
-                                            userHistory.filter(h => h.sectionKey === currentSection).map(record => (
-                                                <div key={record.id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-white group">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${sectionData.color} ${sectionData.textColor}`}>
-                                                            {record.score}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-gray-700">{new Date(record.timestamp).toLocaleDateString()}</p>
-                                                            <p className="text-xs text-gray-400">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex gap-3">
-                                                        <button onClick={() => viewRecord(record)} className="text-blue-600 font-bold hover:underline px-3 py-1 bg-blue-50 rounded-lg text-sm">查看內容</button>
-                                                        <button onClick={() => deleteRecord(record.id)} className="text-red-400 font-bold hover:underline px-3 py-1 bg-red-50 rounded-lg text-sm">刪除</button>
-                                                    </div>
+                                {!mode && (
+                                    <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-8 duration-500">
+                                        <div className="text-center mb-4">
+                                            <span className="text-8xl block mb-4 animate-pulse">{sectionData.icon}</span>
+                                            <h2 className={`text-3xl font-black ${sectionData.textColor}`}>準備好開始了嗎？</h2>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
+                                                <div onClick={() => setMode('learn')} className="h-full flex flex-col items-center justify-center text-center gap-4">
+                                                    <BookOpen className={`w-16 h-16 ${sectionData.textColor}`} />
+                                                    <div><h3 className="text-2xl font-bold text-gray-800">學習模式</h3><p className="text-gray-500">複習重點</p></div>
                                                 </div>
-                                            ))
-                                        )}
+                                            </CartoonCard>
+                                            <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="cursor-pointer hover:bg-gray-50">
+                                                <div onClick={startQuiz} className="h-full flex flex-col items-center justify-center text-center gap-4">
+                                                    <Star className={`w-16 h-16 ${sectionData.textColor}`} />
+                                                    <div><h3 className="text-2xl font-bold text-gray-800">挑戰模式</h3><p className="text-gray-500">開始測驗</p></div>
+                                                </div>
+                                            </CartoonCard>
+                                        </div>
+
+                                        {/* Per-module history list moved inside */}
+                                        <div className="mt-8 bg-white/50 backdrop-blur-sm rounded-3xl p-6 border-2 border-white/50">
+                                            <h3 className={`text-lg font-bold ${sectionData.textColor} mb-4 flex items-center gap-2`}>
+                                                <RotateCcw size={18} /> 歷史作答紀錄 (History)
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {userHistory.filter(h => h.sectionKey === currentSection).length === 0 ? (
+                                                    <p className="text-center py-8 text-gray-500 italic bg-white/30 rounded-2xl">目前還沒有作答紀錄喔！</p>
+                                                ) : (
+                                                    userHistory.filter(h => h.sectionKey === currentSection).map(record => (
+                                                        <div key={record.id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-white group">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${sectionData.color} ${sectionData.textColor}`}>
+                                                                    {record.score}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-gray-700">{new Date(record.timestamp).toLocaleDateString()}</p>
+                                                                    <p className="text-xs text-gray-400">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-3">
+                                                                <button onClick={() => viewRecord(record)} className="text-blue-600 font-bold hover:underline px-3 py-1 bg-blue-50 rounded-lg text-sm">查看內容</button>
+                                                                <button onClick={() => deleteRecord(record.id)} className="text-red-400 font-bold hover:underline px-3 py-1 bg-red-50 rounded-lg text-sm">刪除</button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {mode === 'learn' && (
+                                    <div className="space-y-6 animate-in fade-in duration-500">
+                                        {sectionData.rules.map((rule, idx) => (
+                                            <CartoonCard key={idx} color="bg-white" borderColor={sectionData.borderColor}>
+                                                <h3 className={`text-xl font-black ${sectionData.textColor} mb-3 flex items-center gap-2`}>
+                                                    <span className="bg-gray-100 text-gray-800 w-8 h-8 rounded-full flex items-center justify-center text-sm">{idx + 1}</span>
+                                                    {rule.title}
+                                                </h3>
+                                                <p className="text-gray-700 font-medium mb-4 leading-relaxed whitespace-pre-line">{rule.content}</p>
+                                                <div className="bg-gray-50 border-l-4 border-gray-300 p-3 italic text-gray-600 rounded-r-lg">例句： {rule.example}</div>
+                                            </CartoonCard>
+                                        ))}
+                                        <div className="pt-4 text-center">
+                                            <Button onClick={startQuiz} colorClass={sectionData.btnColor} className="w-full md:w-auto text-xl mx-auto">開始測驗！ <ArrowRight size={24} /></Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {mode === 'quiz' && !completed && (
+                                    <div className="max-w-2xl mx-auto animate-in slide-in-from-right-8 duration-300">
+                                        <div className="mb-8">
+                                            <div className="flex justify-between text-sm font-bold text-gray-500 mb-2">
+                                                <span>Question {currentQuestionIdx + 1} / {sectionData.questions.length}</span>
+                                                <span>Score: {score}</span>
+                                            </div>
+                                            <div className="h-4 bg-white/50 rounded-full overflow-hidden border border-white/60">
+                                                <div className={`h-full ${sectionData.btnColor.split(' ')[0]} transition-all duration-500`} style={{ width: `${((currentQuestionIdx + 1) / sectionData.questions.length) * 100}%` }}></div>
+                                            </div>
+                                        </div>
+                                        <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="py-12">
+                                            <div className="text-center mb-8">
+                                                <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-normal">
+                                                    {sectionData.questions[currentQuestionIdx].q.split('__________').map((part, i, arr) => (
+                                                        <React.Fragment key={i}>
+                                                            {part}
+                                                            {i < arr.length - 1 && (
+                                                                <span className="inline-block px-2">
+                                                                    <input key={currentQuestionIdx} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg" placeholder="" autoFocus autoCorrect="off" autoCapitalize="none" spellCheck="false" autoComplete="new-password" />
+                                                                </span>
+                                                            )}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </h3>
+                                            </div>
+                                            <div className="flex justify-center">
+                                                <Button onClick={checkAnswer} colorClass={sectionData.btnColor} className="w-full md:w-2/3 text-lg">Check Answer <CheckCircle size={24} /></Button>
+                                            </div>
+                                        </CartoonCard>
+                                    </div>
+                                )}
+
+                                {completed && (
+                                    <div className="text-center animate-in zoom-in-90 duration-500 flex flex-col items-center">
+                                        <div className={`bg-white p-8 rounded-3xl shadow-xl border-8 ${sectionData.borderColor} max-w-sm w-full mb-8 relative overflow-hidden`}>
+                                            <div className={`absolute top-0 left-0 w-full h-4 ${sectionData.color}`}></div>
+                                            <div className="text-center mb-6">
+                                                <span className="text-6xl mb-2 block">{score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}</span>
+                                                <h3 className="text-2xl font-black text-gray-800 uppercase tracking-widest border-b-2 border-gray-100 pb-2">Completed!</h3>
+                                            </div>
+                                            <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                                                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
+                                                <p className="text-4xl font-black text-gray-800">{score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span></p>
+                                            </div>
+                                            <p className="text-sm text-gray-500">成績已儲存！回到首頁可以查看最佳紀錄。</p>
+                                        </div>
+                                        <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-md">
+                                            <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600" className="flex-1"><RefreshCw size={20} /> 再玩一次</Button>
+                                            <Button onClick={handleGoHome} colorClass={sectionData.btnColor} className="flex-1"><Home size={20} /> 回到大廳</Button>
+                                        </div>
+                                    </div>
+                                )}
+
                             </div>
-                        )}
-
-                        {mode === 'learn' && (
-                            <div className="space-y-6 animate-in fade-in duration-500">
-                                {sectionData.rules.map((rule, idx) => (
-                                    <CartoonCard key={idx} color="bg-white" borderColor={sectionData.borderColor}>
-                                        <h3 className={`text-xl font-black ${sectionData.textColor} mb-3 flex items-center gap-2`}>
-                                            <span className="bg-gray-100 text-gray-800 w-8 h-8 rounded-full flex items-center justify-center text-sm">{idx + 1}</span>
-                                            {rule.title}
-                                        </h3>
-                                        <p className="text-gray-700 font-medium mb-4 leading-relaxed whitespace-pre-line">{rule.content}</p>
-                                        <div className="bg-gray-50 border-l-4 border-gray-300 p-3 italic text-gray-600 rounded-r-lg">例句： {rule.example}</div>
-                                    </CartoonCard>
-                                ))}
-                                <div className="pt-4 text-center">
-                                    <Button onClick={startQuiz} colorClass={sectionData.btnColor} className="w-full md:w-auto text-xl mx-auto">開始測驗！ <ArrowRight size={24} /></Button>
-                                </div>
-                            </div>
-                        )}
-
-                        {mode === 'quiz' && !completed && (
-                            <div className="max-w-2xl mx-auto animate-in slide-in-from-right-8 duration-300">
-                                <div className="mb-8">
-                                    <div className="flex justify-between text-sm font-bold text-gray-500 mb-2">
-                                        <span>Question {currentQuestionIdx + 1} / {sectionData.questions.length}</span>
-                                        <span>Score: {score}</span>
-                                    </div>
-                                    <div className="h-4 bg-white/50 rounded-full overflow-hidden border border-white/60">
-                                        <div className={`h-full ${sectionData.btnColor.split(' ')[0]} transition-all duration-500`} style={{ width: `${((currentQuestionIdx + 1) / sectionData.questions.length) * 100}%` }}></div>
-                                    </div>
-                                </div>
-                                <CartoonCard color="bg-white" borderColor={sectionData.borderColor} className="py-12">
-                                    <div className="text-center mb-8">
-                                        <h3 className="text-2xl md:text-3xl font-bold text-gray-800 leading-normal">
-                                            {sectionData.questions[currentQuestionIdx].q.split('__________').map((part, i, arr) => (
-                                                <React.Fragment key={i}>
-                                                    {part}
-                                                    {i < arr.length - 1 && (
-                                                        <span className="inline-block px-2">
-                                                            <input key={currentQuestionIdx} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && checkAnswer()} className="border-b-4 border-gray-300 bg-gray-50 text-center w-40 md:w-56 focus:outline-none focus:border-blue-500 text-blue-600 font-handwriting px-2 py-1 transition-colors rounded-t-lg" placeholder="" autoFocus autoCorrect="off" autoCapitalize="none" spellCheck="false" autoComplete="new-password" />
-                                                        </span>
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-                                        </h3>
-                                    </div>
-                                    <div className="flex justify-center">
-                                        <Button onClick={checkAnswer} colorClass={sectionData.btnColor} className="w-full md:w-2/3 text-lg">Check Answer <CheckCircle size={24} /></Button>
-                                    </div>
-                                </CartoonCard>
-                            </div>
-                        )}
-
-                        {completed && (
-                            <div className="text-center animate-in zoom-in-90 duration-500 flex flex-col items-center">
-                                <div className={`bg-white p-8 rounded-3xl shadow-xl border-8 ${sectionData.borderColor} max-w-sm w-full mb-8 relative overflow-hidden`}>
-                                    <div className={`absolute top-0 left-0 w-full h-4 ${sectionData.color}`}></div>
-                                    <div className="text-center mb-6">
-                                        <span className="text-6xl mb-2 block">{score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}</span>
-                                        <h3 className="text-2xl font-black text-gray-800 uppercase tracking-widest border-b-2 border-gray-100 pb-2">Completed!</h3>
-                                    </div>
-                                    <div className="bg-gray-50 p-4 rounded-xl mb-4">
-                                        <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
-                                        <p className="text-4xl font-black text-gray-800">{score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span></p>
-                                    </div>
-                                    <p className="text-sm text-gray-500">成績已儲存！回到首頁可以查看最佳紀錄。</p>
-                                </div>
-                                <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-md">
-                                    <Button onClick={resetQuiz} colorClass="bg-gray-500 hover:bg-gray-600" className="flex-1"><RefreshCw size={20} /> 再玩一次</Button>
-                                    <Button onClick={handleGoHome} colorClass={sectionData.btnColor} className="flex-1"><Home size={20} /> 回到大廳</Button>
-                                </div>
-                            </div>
-                        )}
-
-
-                    </div>
-                </div>
-            );
+                        </div>
+                        );
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+                        const root = ReactDOM.createRoot(document.getElementById('root'));
+                        root.render(<App />);
     </script>
 </body>
 
