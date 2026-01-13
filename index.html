@@ -73,6 +73,7 @@
         const LogOut = (p) => <IconBase {...p} d={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>} />;
         const RotateCcw = (p) => <IconBase {...p} d={<><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></>} />;
         const Share2 = (p) => <IconBase {...p} d={<><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></>} />;
+        const X = (p) => <IconBase {...p} d={<path d="M18 6L6 18M6 6l12 12" />} />;
 
         // --- Data ---
         const grammarData = {
@@ -465,6 +466,9 @@
                                 {/* Success Image Overlay for LINE/Mobile */}
                                 {reportImageUrl && (
                                     <div className="absolute inset-0 bg-black/90 z-30 flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+                                        <button onClick={() => setReportImageUrl(null)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-40 bg-white/10 p-2 rounded-full transition-colors focus:outline-none">
+                                            <X size={28} />
+                                        </button>
                                         <div className="bg-white p-2 rounded-xl mb-4 max-w-full">
                                             <img src={reportImageUrl} className="max-h-[70vh] rounded-lg shadow-2xl" alt="Report" />
                                         </div>
@@ -600,7 +604,6 @@
                                                 <div className={`h-full ${data.progressColor} transition-all duration-1000 ease-out`} style={{ width: `${progress}%` }}></div>
                                             </div>
                                             <div className="flex justify-between mt-1">
-                                                <p className={`${data.textColor} text-xs font-bold opacity-70`}>最佳成績: {bestScore}/{data.questions.length}</p>
                                                 <p className={`${data.textColor} text-xs font-bold opacity-70`}>{Math.round(progress)}% 完成</p>
                                             </div>
                                         </button>
@@ -689,7 +692,7 @@
                                                 <div key={record.id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-white group">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${sectionData.color} ${sectionData.textColor}`}>
-                                                            {record.score}
+                                                            ✨
                                                         </div>
                                                         <div>
                                                             <p className="font-bold text-gray-700">{new Date(record.timestamp).toLocaleDateString()}</p>
@@ -731,7 +734,7 @@
                                 <div className="mb-8">
                                     <div className="flex justify-between text-sm font-bold text-gray-500 mb-2">
                                         <span>Question {currentQuestionIdx + 1} / {sectionData.questions.length}</span>
-                                        <span>Score: {score}</span>
+                                        <span className="opacity-0">Score hidden</span>
                                     </div>
                                     <div className="h-4 bg-white/50 rounded-full overflow-hidden border border-white/60">
                                         <div className={`h-full ${sectionData.btnColor.split(' ')[0]} transition-all duration-500`} style={{ width: `${((currentQuestionIdx + 1) / sectionData.questions.length) * 100}%` }}></div>
@@ -767,9 +770,8 @@
                                         <span className="text-6xl mb-2 block">{score === sectionData.questions.length ? '🏆' : score > sectionData.questions.length / 2 ? '🌟' : '💪'}</span>
                                         <h3 className="text-2xl font-black text-gray-800 uppercase tracking-widest border-b-2 border-gray-100 pb-2">Completed!</h3>
                                     </div>
-                                    <div className="bg-gray-50 p-4 rounded-xl mb-4">
-                                        <p className="text-xs text-gray-400 uppercase font-bold mb-1">Score</p>
-                                        <p className="text-4xl font-black text-gray-800">{score} <span className="text-lg text-gray-400 font-medium">/ {sectionData.questions.length}</span></p>
+                                    <div className="bg-gray-50 p-6 rounded-xl mb-4">
+                                        <p className="text-xl font-black text-gray-800 tracking-wide">測驗完成！任務達成！☀️</p>
                                     </div>
                                     <p className="text-sm text-gray-500">成績已儲存！回到首頁可以查看最佳紀錄。</p>
                                 </div>
